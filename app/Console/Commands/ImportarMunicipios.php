@@ -25,6 +25,7 @@ class ImportarMunicipios extends Command
         file_put_contents($filePath, $response->body());
 
         $this->info('Procesando archivo Excel...');
+        exit;
 
         // Leer el archivo Excel
         $spreadsheet = IOFactory::load($filePath);
