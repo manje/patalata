@@ -17,6 +17,7 @@
                     <p><strong>Creador:</strong> {{ $evento->equipo ? $evento->equipo->nombre : $evento->creador->name }}</p>
                     @if($evento->cover)
                         <img src="{{ asset('storage/' . $evento->cover) }}" alt="{{ $evento->titulo }}" class="mt-4">
+{{ asset('storage/' . $evento->cover) }}
                     @endif
                 </div>
             </div>

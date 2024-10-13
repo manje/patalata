@@ -15,7 +15,6 @@
                         <div class="mb-4">
                             <label for="titulo" class="block text-sm font-medium text-gray-700">Título</label>
                             <input type="text" name="titulo" id="titulo" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50" value="{{ old('titulo') }}" />
-                           
                             @error('titulo')
                                 <span class="text-sm text-red-600">{{ $message }}</span>
                             @enderror
@@ -28,9 +27,7 @@
 
                         <div class="mb-4">
                             <label for="fecha_inicio" class="block text-sm font-medium text-gray-700">Fecha de Inicio</label>
-                            <input type="datetime-local" name="fecha_inicio" id="fecha_inicio"  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50" required />
-                        
-                        
+                            <input type="datetime-local" name="fecha_inicio" id="fecha_inicio"  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50" required value="{{ old('fecha_inicio') }}" />
                         </div>
 
                         <div class="mb-4">
@@ -57,7 +54,7 @@
                                             @if (old('team_id') == $equipo->id)
                                                 selected
                                             @endif
-                                        value="{{ $equipo->id }}">{{ $equipo->nombre }}</option>
+                                        value="{{ $equipo->id }}">{{ $equipo->name }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -66,6 +63,10 @@
                         <div class="mb-4">
                             <label for="cover" class="block text-sm font-medium text-gray-700">Imagen (opcional)</label>
                             <input type="file" name="cover" id="cover" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50" />
+                            @error('cover')
+                                <span class="text-sm text-red-600">{{ $message }}</span>
+                            @enderror
+
                         </div>
 
                         <div>
