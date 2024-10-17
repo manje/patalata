@@ -16,6 +16,7 @@ class CreateInterestsTable extends Migration
         Schema::create('interests', function (Blueprint $table) {
             $table->id();
             $table->string('nombre');
+            $table->string('slug')->unique(); 
             $table->enum('estado', ['activo', 'oculto', 'borrado'])->default('activo');
             $table->timestamps();
         });
