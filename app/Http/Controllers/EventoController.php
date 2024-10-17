@@ -18,9 +18,26 @@ class EventoController extends Controller
 
     public function index()
     {
-        $eventos = Evento::with('equipo', 'creador')->get(); // Traer todos los eventos con sus equipos o creadores
+        $formatos=["mes"=>"Mensual","semana"=>"Semanal","dia"=>"Diario"];
+        $formato="mes";
 
-        return view('eventos.index', compact('eventos'));
+        if (request()->has('formato')) {
+            $formato= request('formato');
+            if (!(isset($formatos[$formato])))
+            {
+                $formato="mes";
+            }
+        }
+        $formato="mes";
+        if ($formato=="mes")
+        {
+            $desde=now()->startOfMonth();
+            $hasta=now()->endOfMonth();
+        }
+        $eventos = Evento::whereBetween('fecha_inicio',[$desde,$hasta])->get()->sortBy('fecha_inicio'); // Obtener todos los eventos
+           
+        $eventostodos = Evento::all(); // Obtener todos los eventos
+        return view('eventos.index', compact('eventos','eventostodos','formatos','formato'));
     }
 
     /**
