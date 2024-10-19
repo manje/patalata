@@ -12,12 +12,16 @@
         @auth
             @if (Laravel\Jetstream\Jetstream::hasTeamFeatures())
                 <details class="">
-                    <summary >
-
-
+                    <summary>
+                    @if (Auth::user()->allTeams()->count() > 0)
                        {{ Auth::user()->currentTeam->name }} 
+                    @else
+                        Equipos
+                    @endif
                     </summary>
-                        <li ><a href="{{ route('teams.show', Auth::user()->currentTeam->id) }}">Configuración Equipo</a></li>
+                        @if (Auth::user()->allTeams()->count() > 0)
+                            <li ><a href="{{ route('teams.show', Auth::user()->currentTeam->id) }}">Configuración Equipo</a></li>
+                        @endif
                         @can('create', Laravel\Jetstream\Jetstream::newTeamModel())
                             <li><a href="{{ route('teams.create') }}">Create New Team</a></li>
                         @endcan

@@ -1,5 +1,5 @@
 <?php
-
+    
 namespace App\Http\Controllers;
 
 use App\Models\Evento;
@@ -57,7 +57,12 @@ class EventoController extends Controller
     public function create()
     {
         $municipios = Municipio::all(); // Obtener todos los municipios
-        $equipos = auth()->user()->allTeams(); // Obtener equipos del usuario
+        // vemos si AllTemas es nulo
+        if (is_null(auth()->user()->allTeams())==false) {
+            $equipos = auth()->user()->allTeams(); // Obtener equipos del usuario
+        } else {
+            $equipos = [];
+        }
         return view('eventos.create', compact('municipios', 'equipos'));
     }
     
@@ -72,7 +77,9 @@ class EventoController extends Controller
             'team_id' => 'nullable|exists:teams,id',
             'cover' => 'nullable|image|max:4096',
         ]);
-    
+
+        $dir = now()->format('Y-m');
+
         $evento = Evento::create([
             'user_id' => auth()->id(),
             'team_id' => $request->team_id,
@@ -81,7 +88,7 @@ class EventoController extends Controller
             'descripcion' => $request->descripcion,
             'fecha_inicio' => $request->fecha_inicio,
             'fecha_fin' => $request->fecha_fin,
-            'cover' => $request->file('cover') ? $request->file('cover')->store('covers',"public") : null,
+            'cover' => $request->file('cover') ? $request->file('cover')->store('evento/'.$dir,"public") : null,
         ]);
     
         return redirect()->route('eventos.index')->with('success', 'Evento creado con éxito.');

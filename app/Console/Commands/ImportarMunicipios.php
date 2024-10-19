@@ -15,17 +15,24 @@ class ImportarMunicipios extends Command
 
     public function handle()
     {
+        // Compruebo si la tabla está vacia.
+        if (Municipio::count() > 0) {
+            $this->info('La tabla de municipios no está vacía.');
+            return;
+        }
+
+        
+
         // URL del archivo Excel
         $url = 'https://www.ine.es/daco/daco42/codmun/diccionario24.xlsx';
 
         // Descargar el archivo Excel
         $this->info('Descargando archivo...');
         $response = Http::get($url);
-        $filePath = storage_path('app/diccionario24.xlsx');
+        $filePath = storage_path('diccionario24.xlsx');
         file_put_contents($filePath, $response->body());
 
         $this->info('Procesando archivo Excel...');
-        exit;
 
         // Leer el archivo Excel
         $spreadsheet = IOFactory::load($filePath);
