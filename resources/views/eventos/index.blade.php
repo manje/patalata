@@ -23,7 +23,7 @@
                                 </a>
                                 <div>
                                     <strong>Organizador:</strong>
-                                    {{ $evento->equipo ? $evento->equipo->nombre : $evento->creador->name }}
+                                    {{ $evento->equipo ? $evento->equipo->name : $evento->creador->name }}
                                 </div>
                                 <div>
                                     <strong>Fecha:</strong> {{ $evento->fecha_inicio }}
