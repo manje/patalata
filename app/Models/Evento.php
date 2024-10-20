@@ -30,6 +30,12 @@ class Evento extends Model
         return $this->belongsTo(Municipio::class, 'municipio_id');
     }
 
+    // Relación con la table pivote con la tabla categories
+    public function categorias()
+    {
+        return $this->belongsToMany(Category::class, 'evento_category');
+    }
+
     // Generar el slug automáticamente al crear el evento
     protected static function boot()
     {

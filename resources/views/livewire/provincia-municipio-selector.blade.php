@@ -5,7 +5,11 @@
         <select  wire:change="cambio" wire:model="selectedProvincia" id="{{ $provinciaName }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50" name="{{ $provinciaName }}">
             <option value="">Seleccione una provincia</option>
             @foreach ($provincias as $key => $provincia)
-                <option value="{{ $key }}">{{ $provincia }}</option>
+                <option 
+                    @if ($selectedProvincia == $key)
+                        selected
+                    @endif
+                value="{{ $key }}">{{ $provincia }}</option>
             @endforeach
         </select>
     </div>
@@ -16,13 +20,17 @@
         	@if ($required)
         		required
 			@endif
+            wire:change="cambiomun"
+
         >
             <option value="">Seleccione un municipio</option>
             @foreach ($municipios as $municipio)
-                <option value="{{ $municipio->id }}">{{ $municipio->nombre }}</option>
+                <option
+                    @if ($selectedMunicipio == $municipio->id)
+                        selected
+                    @endif
+                value="{{ $municipio->id }}">{{ $municipio->nombre }}</option>
             @endforeach
         </select>
-    
-
     </div>
 </div>

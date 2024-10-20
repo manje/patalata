@@ -76,10 +76,10 @@ class Municipio extends Model
         return self::$provincias;
     }
 
-public static function getProvincias()
-{
-    return self::$provincias;
-}
+    public static function getProvincias()
+    {
+        return self::$provincias;
+    }
 
 
 }
