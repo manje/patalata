@@ -28,4 +28,5 @@ npm run build
 php artisan migrate
 php artisan key:generate
 php artisan municipios:importar
-php artisan db:seed```
+php artisan db:seed
+php artisan storage:link```
