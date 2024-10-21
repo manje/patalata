@@ -5,7 +5,7 @@
     <a href="/" class="btn btn-ghost text-xl">patalata.net</a>
 
     <ul class="menu menu-horizontal px-1">
-      <li><a href="{{ route('eventos.index') }}" :active="request()->routeIs('eventos.index')">Agenda</a></li>
+      <li><a href="{{ route('eventos.index') }}" >Agenda</a></li>
     </ul>
   </div>
   <div class="flex-none">        

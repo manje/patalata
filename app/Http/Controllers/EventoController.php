@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Evento;
 use Illuminate\Http\Request;
 use App\Models\Municipio;
+use App\Models\EventType;
+use App\Models\Category;
 
 class EventoController extends Controller
 {
@@ -54,7 +56,7 @@ class EventoController extends Controller
     }
 
 
-    public function create()
+    public function create(Request $request)
     {
         $municipios = Municipio::all(); // Obtener todos los municipios
         // vemos si AllTemas es nulo
@@ -63,11 +65,18 @@ class EventoController extends Controller
         } else {
             $equipos = [];
         }
-        return view('eventos.create', compact('municipios', 'equipos'));
+        $eventTypes=EventType::all();
+        $categories=Category::all();
+        if ($request->has('fecha'))
+            $fecha=date("Y-m-d",strtotime($request->fecha));
+        else
+            $fecha=now()->format('Y-m-d');
+        return view('eventos.create', compact('municipios', 'equipos','eventTypes','categories','fecha'));
     }
     
     public function store(Request $request)
     {
+
         $request->validate([
             'titulo' => 'required|string|max:255',
             'descripcion' => 'nullable|string',
@@ -76,6 +85,8 @@ class EventoController extends Controller
             'municipio_id' => 'required|exists:municipios,id',
             'team_id' => 'nullable|exists:teams,id',
             'cover' => 'nullable|image|max:4096',
+            'event_type_id' => 'required|exists:event_types,id',
+            'categories' => 'nullable|array',
         ]);
 
         $dir = now()->format('Y-m');
@@ -89,9 +100,11 @@ class EventoController extends Controller
             'fecha_inicio' => $request->fecha_inicio,
             'fecha_fin' => $request->fecha_fin,
             'cover' => $request->file('cover') ? $request->file('cover')->store('evento/'.$dir,"public") : null,
+            'event_type_id' => $request->event_type_id,
+            'categories' => $request->categories,
         ]);
     
-        return redirect()->route('eventos.index')->with('success', 'Evento creado con éxito.');
+        return redirect()->route('eventos.show', $evento->slug);
     }
         
 
