@@ -40,7 +40,7 @@ class EventoController extends Controller
             $hasta=now()->endOfMonth();
         }
         $eventos = Evento::whereBetween('fecha_inicio',[$desde,$hasta])->get()->sortBy('fecha_inicio'); // Obtener todos los eventos
-        $evento=Evento::where('fecha_inicio','>=',now())->orderBy('fecha_inicio')->first();
+        $evento=Evento::where('fecha_inicio','>=',now())->orderBy('fecha_inicio')->whereNotNull('cover')->first();
         // que tengoa una imagen
         $evento=Evento::where('fecha_inicio','>=',now())->whereNotNull('cover')->orderBy('fecha_inicio')->first();
         // Obtener todos los eventos con cover
