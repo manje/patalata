@@ -3,7 +3,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
 
-
+@if ($evento)
 <div class="w-full h-64 relative">
   <!-- Imagen de fondo del evento -->
   <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('{{ asset('storage/' . $evento->cover) }}');"></div>
@@ -19,7 +19,7 @@
     </div>
   </div>
 </div>
-
+@endif
 
 <div class="flex flex-wrap">
     @foreach ($eventostodos->slice(1, 4) as $index => $evento)
