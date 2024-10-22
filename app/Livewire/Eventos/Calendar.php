@@ -17,6 +17,10 @@ class Calendar extends Component
 
     public function mount()    
     {
+        if (auth()->guest())
+            $this->municipio_id=false;
+        else
+            $this->municipio_id=auth()->user()->municipio_id;
         $this->time=time();
         $this->CrearTabla();
     }

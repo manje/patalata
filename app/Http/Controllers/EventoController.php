@@ -8,6 +8,9 @@ use App\Models\Municipio;
 use App\Models\EventType;
 use App\Models\Category;
 
+use Illuminate\Support\Facades\Log;
+
+
 class EventoController extends Controller
 {
     /**
@@ -37,9 +40,12 @@ class EventoController extends Controller
             $hasta=now()->endOfMonth();
         }
         $eventos = Evento::whereBetween('fecha_inicio',[$desde,$hasta])->get()->sortBy('fecha_inicio'); // Obtener todos los eventos
-           
-        $eventostodos = Evento::all(); // Obtener todos los eventos
-        return view('eventos.index', compact('eventos','eventostodos','formatos','formato'));
+        $evento=Evento::where('fecha_inicio','>=',now())->orderBy('fecha_inicio')->first();
+        // que tengoa una imagen
+        $evento=Evento::where('fecha_inicio','>=',now())->whereNotNull('cover')->orderBy('fecha_inicio')->first();
+        // Obtener todos los eventos con cover
+        $eventostodos = Evento::whereNotNull('cover')->get();
+        return view('eventos.index', compact('evento','eventos','eventostodos','formatos','formato'));
     }
 
     /**

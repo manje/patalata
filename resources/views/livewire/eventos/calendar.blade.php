@@ -1,4 +1,14 @@
 <div class="text-gray-700">
+
+
+
+<div wire:loading.flex class="fixed inset-0 bg-opacity-50 bg-gray-700 z-50 justify-center items-center">
+  <div class="text-center">
+    <p class="text-white mt-2"><span class="loading loading-ring loading-lg"></span> Cargando...</p>
+  </div>
+</div>
+
+
   <!-- Component Start -->
   <div class="flex flex-grow h-screen overflow-auto"> 
     <div class="flex flex-col flex-grow">
