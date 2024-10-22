@@ -21,6 +21,7 @@
 </div>
 @endif
 
+@if ($eventostodos->count() > 4)
 <div class="flex flex-wrap">
     @foreach ($eventostodos->slice(1, 4) as $index => $evento)
         <div class="h-64 w-full md:w-1/2 lg:w-1/4 bg-gray-400 relative  hidden
@@ -48,7 +49,7 @@
         </div>
     @endforeach
 </div>
-
+@endif
 
 
                 @livewire('eventos.calendar')
