@@ -23,29 +23,28 @@ class EventoController extends Controller
 
     public function index()
     {
-        $formatos=["mes"=>"Mensual","semana"=>"Semanal","dia"=>"Diario"];
-        $formato="mes";
-
-        if (request()->has('formato')) {
-            $formato= request('formato');
-            if (!(isset($formatos[$formato])))
-            {
-                $formato="mes";
-            }
-        }
-        $formato="mes";
-        if ($formato=="mes")
+        if (auth()->guest())
         {
-            $desde=now()->startOfMonth();
-            $hasta=now()->endOfMonth();
+            $superior = Evento::where('fecha_inicio','>=',now())->whereNotNull('cover')->orderBy('fecha_inicio')->limit(5)->get();
+            Log::info($superior->count());
         }
-        $eventos = Evento::whereBetween('fecha_inicio',[$desde,$hasta])->get()->sortBy('fecha_inicio'); // Obtener todos los eventos
-        $evento=Evento::where('fecha_inicio','>=',now())->orderBy('fecha_inicio')->whereNotNull('cover')->first();
-        // que tengoa una imagen
-        $evento=Evento::where('fecha_inicio','>=',now())->whereNotNull('cover')->orderBy('fecha_inicio')->first();
-        // Obtener todos los eventos con cover
-        $eventostodos = Evento::whereNotNull('cover')->get();
-        return view('eventos.index', compact('evento','eventos','eventostodos','formatos','formato'));
+        else
+        {
+            $municipio_id=auth()->user()->municipio_id;
+            $provincia=auth()->user()->municipio->cpro;
+            // en la parte superior eventos provinciales, si no hay 5 todos
+            $superior = Evento::join('municipios', 'eventos.municipio_id', '=', 'municipios.id')
+                ->where('eventos.fecha_inicio', '>=', now())
+                ->where('municipios.cpro', $provincia)
+                ->whereNotNull('eventos.cover')
+                ->orderBy('eventos.fecha_inicio')
+                ->select('eventos.*')
+                ->limit(5)
+                ->get();
+            if ($superior->count()<5)
+                $superior = Evento::where('fecha_inicio','>=',now())->whereNotNull('cover')->orderBy('fecha_inicio')->limit(5)->get();
+        }
+        return view('eventos.index', compact('superior'));
     }
 
     /**
@@ -57,7 +56,6 @@ class EventoController extends Controller
     public function show($slug)
     {
         $evento = Evento::with('equipo', 'creador')->where('slug', $slug)->firstOrFail(); // Buscar evento por slug
-
         return view('eventos.show', compact('evento'));
     }
 
@@ -92,8 +90,9 @@ class EventoController extends Controller
             'team_id' => 'nullable|exists:teams,id',
             'cover' => 'nullable|image|max:4096',
             'event_type_id' => 'required|exists:event_types,id',
-            'categories' => 'nullable|array',
-        ]);
+            'categorias' => 'nullable|array', // El nombre del campo es 'categorias'
+            'categorias.*' => 'exists:categories,id', // Verifica que cada categoría seleccionada exista
+        ]);  
 
         $dir = now()->format('Y-m');
 
@@ -107,9 +106,17 @@ class EventoController extends Controller
             'fecha_fin' => $request->fecha_fin,
             'cover' => $request->file('cover') ? $request->file('cover')->store('evento/'.$dir,"public") : null,
             'event_type_id' => $request->event_type_id,
-            'categories' => $request->categories,
         ]);
-    
+
+
+        if ($request->has('categorias')) {
+            $evento->categories()->sync($request->categorias);
+        }
+
+
+
+
+
         return redirect()->route('eventos.show', $evento->slug);
     }
         

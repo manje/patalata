@@ -34,7 +34,7 @@ class Evento extends Model
     }
 
     // Relación con la table pivote con la tabla categories
-    public function categorias()
+    public function categories()
     {
         return $this->belongsToMany(Category::class, 'evento_category');
     }

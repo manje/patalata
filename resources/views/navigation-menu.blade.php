@@ -2,7 +2,7 @@
 
 <div class="navbar bg-base-100">
   <div class="flex-1">
-    <a href="/" class="btn btn-ghost text-xl">patalata.net</a>
+    <a href="{{ config('app.url') }}" class="btn btn-ghost text-xl">{{ config('app.name') }}</a>
 
     <ul class="menu menu-horizontal px-1">
       <li><a href="{{ route('eventos.index') }}" >Agenda</a></li>

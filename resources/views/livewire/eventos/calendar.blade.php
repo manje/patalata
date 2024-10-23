@@ -26,6 +26,60 @@
           </button>
         </div>
         <h2 class="ml-2 text-xl font-bold leading-none">{{$mes}}</h2>
+        <select class="ml-2 form-control select " wire:model="selectedProvincia" wire:change="cambioProvincia">
+          <option value="">Todas las Provincias</option>
+          @foreach ($listProvincias as $key => $value)
+            <option value="{{ $key }}">{{ $value }}</option>
+          @endforeach
+        </select>
+        <select class="ml-2 form-control select " wire:model="selectedMunicipio" wire:change="cambioMunicipio">
+          <option value="">Todas las Localidades</option>
+          @foreach ($listMunicipios as $value)
+            <option value="{{ $value->id }}">{{ $value->nombre }}</option>
+          @endforeach
+        </select>
+        <select class="ml-2 form-control select " wire:model="selectedTipo" wire:change="cambioTipo">
+          <option value="">Todos los Tipos</option>
+          @foreach ($listTipos as $value)
+            <option value="{{ $value->id }}">{{ $value->name }}</option>
+          @endforeach
+        </select>
+        
+        <!-- ahora un deslplegable de categorias alineado a la derecha -->
+        
+        <div class="flex-grow"></div>
+
+        @foreach ($listfiltros as $f)
+        
+<div class="badge badge-info gap-2 mr-1">
+  <svg
+    wire:click="delCategoria({{ $f->id }})"
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    class="inline-block h-4 w-4 stroke-current">
+    <path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M6 18L18 6M6 6l12 12"></path>
+  </svg>
+  <!-- nombre de la categoria con id $f -->
+
+  {{ $f->nombre }}
+</div>
+        @endforeach
+
+
+
+
+        <select class="ml-2 form-control select " wire:model="selectedCategoria" wire:change="cambioCategoria">
+          <option value="">Seleccione Categoría</option>
+          @foreach ($listCategories as $value)
+            <option value="{{ $value->id }}">{{ $value->nombre }}</option>
+          @endforeach
+        </select>
+
       </div>
       <div class="grid grid-cols-7 mt-4">
         <div class="pl-1 text-sm">Lunes</div>
