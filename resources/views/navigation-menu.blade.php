@@ -7,6 +7,9 @@
     <ul class="menu menu-horizontal px-1">
       <li><a href="{{ route('eventos.index') }}" >Agenda</a></li>
     </ul>
+    <ul class="menu menu-horizontal px-1">
+      <li><a href="{{ route('denuncias.index') }}" >Denuncias</a></li>
+    </ul>
   </div>
   <div class="flex-none">        
     @auth

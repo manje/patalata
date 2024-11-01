@@ -24,6 +24,11 @@ Route::get('/agenda/create', [EventoController::class, 'create'])->name('eventos
 Route::get('/agenda/{slug}', [EventoController::class, 'show'])->name('eventos.show');
 Route::post('/agenda', [EventoController::class, 'store'])->name('eventos.store');
 
+use App\Http\Controllers\DenunciaController;
+
+Route::resource('denuncias', DenunciaController::class);
+
+
 use App\Http\Controllers\TareaController;
 
 Route::middleware(['auth'])->group(function () {

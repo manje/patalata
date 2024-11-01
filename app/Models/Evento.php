@@ -46,7 +46,7 @@ class Evento extends Model
 
         static::creating(function ($evento) {
             if (empty($evento->slug)) {
-                $t=$evento->titulo;
+                $t=date("Y")."_".$evento->titulo;
                 $slug=Str::slug($t);
                 Log::info("1er Slug: ".$slug);
                 Log::info(print_r(Evento::where('slug', $slug)->count(),true));
@@ -56,7 +56,6 @@ class Evento extends Model
                     Log::info("Slug con algo: ".$slug);
                     while (Evento::where('slug', $slug)->count()>0)
                         $slug=$slug  . Str::random(3);
-                    Log::info("Slug final: ".$slug);
                 }
                 $evento->slug = $slug;
                 Log::info("Slug final: ".$slug);
