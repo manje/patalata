@@ -1,8 +1,18 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('Denuncias') }}
-        </h2>
+        <!-- titutlo y botón, a la derecha, para añadir una nueva denuncia -->
+        <div class="flex justify-between">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('Denuncias') }}
+            </h2>
+            @auth
+            <a href="{{ route('denuncias.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                {{ __('Crear Denuncia') }}
+            </a>
+            @endauth
+        
+        </div>
+
     </x-slot>
 
     <div class="py-12">

@@ -25,6 +25,11 @@ class DenunciaController extends Controller
 
     public function create()
     {
+    	// comprobamos por si no está registrado 
+   		if (auth()->guest())
+		{
+			return redirect()->route('login');
+		}
         // vemos si AllTemas es nulo
         if (is_null(auth()->user()->allTeams())==false) {
             $equipos = auth()->user()->allTeams(); // Obtener equipos del usuario

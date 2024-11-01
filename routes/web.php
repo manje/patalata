@@ -26,6 +26,7 @@ Route::post('/agenda', [EventoController::class, 'store'])->name('eventos.store'
 
 use App\Http\Controllers\DenunciaController;
 
+
 Route::resource('denuncias', DenunciaController::class);
 
 
