@@ -11,7 +11,9 @@ use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
 
+use Illuminate\Support\Str; // Importar la clase Str
 use Illuminate\Contracts\Auth\MustVerifyEmail; 
+
 
 class User extends Authenticatable
 {
@@ -79,6 +81,22 @@ class User extends Authenticatable
     public function categories()
     {
         return $this->belongsToMany(Category::class);
+    }
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($user) {
+            $user->slug = static::generateUniqueSlug($user->name);
+        });
+    }
+
+    public static function generateUniqueSlug($name)
+    {
+        $slug = Str::slug($name);
+        $count = User::where('slug', 'LIKE', "$slug%")->count()
+            + Team::where('slug', 'LIKE', "$slug%")->count();
+        return $count ? "{$slug}-{$count}" : $slug;
     }
 
 }

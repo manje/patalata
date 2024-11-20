@@ -7,6 +7,7 @@ use Laravel\Jetstream\Events\TeamCreated;
 use Laravel\Jetstream\Events\TeamDeleted;
 use Laravel\Jetstream\Events\TeamUpdated;
 use Laravel\Jetstream\Team as JetstreamTeam;
+use Illuminate\Support\Str; // Importar la clase Str
 
 class Team extends JetstreamTeam
 {
@@ -46,4 +47,22 @@ class Team extends JetstreamTeam
             'personal_team' => 'boolean',
         ];
     }
+
+    protected static function boot()
+    {
+        parent::boot();
+        static::creating(function ($team) {
+            $team->slug = static::generateUniqueSlug($team->name);
+        });
+    }
+
+    public static function generateUniqueSlug($name)
+    {
+        $slug = Str::slug($name);
+        $count = Team::where('slug', 'LIKE', "$slug%")->count()
+            + User::where('slug', 'LIKE', "$slug%")->count();
+        return $count ? "{$slug}-{$count}" : $slug;
+    }
+
+
 }

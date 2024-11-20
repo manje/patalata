@@ -32,3 +32,5 @@ php artisan db:seed
 php artisan storage:link
 
 ```
+
+Si tienes una versión anterior al 21 Nov 2025, y la actualizas, ejecuta: php artisan generate:slugs
