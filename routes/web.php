@@ -25,8 +25,6 @@ Route::get('/agenda/{slug}', [EventoController::class, 'show'])->name('eventos.s
 Route::post('/agenda', [EventoController::class, 'store'])->name('eventos.store');
 
 use App\Http\Controllers\DenunciaController;
-
-
 Route::resource('denuncias', DenunciaController::class);
 
 
@@ -38,5 +36,17 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tareas/{tarea}/quitar-voto', [TareaController::class, 'quitarVoto'])->name('tareas.quitarVoto');
 });
 
+use App\Http\Controllers\PostController;
+Route::resource('/articulo', PostController::class);
 
+
+Route::prefix('articulos')->group(function () {
+    Route::get('/', [PostController::class, 'index'])->name('posts.index'); // Mostrar lista de posts
+    Route::get('/create', [PostController::class, 'create'])->name('posts.create'); // Formulario para crear un nuevo post
+    Route::post('/', [PostController::class, 'store'])->name('posts.store'); // Guardar un nuevo post
+    Route::get('/{post}', [PostController::class, 'show'])->name('posts.show'); // Mostrar un post individual
+    #Route::get('/{post}/edit', [PostController::class, 'edit'])->name('posts.edit'); // Formulario para editar un post
+    #Route::put('/{post}', [PostController::class, 'update'])->name('posts.update'); // Actualizar un post existente
+    #Route::delete('/{post}', [PostController::class, 'destroy'])->name('posts.destroy'); // Eliminar un post
+});
 
