@@ -9,8 +9,6 @@ Adaptación de https://github.com/aaronpk/Nautilus/blob/main/app/ActivityPub/HTT
 */
 
 
-*/
-
 class HTTPSignature {
 
   public static function parseSignatureHeader($signature) {
