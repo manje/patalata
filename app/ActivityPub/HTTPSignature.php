@@ -1,8 +1,15 @@
 <?php
 namespace App\ActivityPub;
 
+
+
 use DateTime;
+use App\Models\User;
+
+
+
 use Illuminate\Support\Facades\Log;
+
 
 /*
 Adaptación de https://github.com/aaronpk/Nautilus/blob/main/app/ActivityPub/HTTPSignature.php
@@ -10,6 +17,48 @@ Adaptación de https://github.com/aaronpk/Nautilus/blob/main/app/ActivityPub/HTT
 
 
 class HTTPSignature {
+
+
+  public static function sign(User &$user, $activity,$inbox) { // } $url-inbox, $body-actividad=false, $addlHeaders=[]) {
+    $digest = true;
+    #if($body)
+    #  $digest = self::_digest($body);
+    $digest=self::_digest($activity);
+
+    #$url=route('activitypub.inbox', ['slug' => $user->slug]);
+    $url=$inbox;
+
+    $headers = self::_headersToSign($url, $digest);
+
+    #$headers = array_merge($headers, $addlHeaders);
+
+    $stringToSign = self::_headersToSigningString($headers);
+    Log::info('String to sign: '.$stringToSign);
+
+    $signedHeaders = implode(' ', array_map('strtolower', array_keys($headers)));
+    Log::info('Signed headers: '.$signedHeaders);
+
+    $key = openssl_pkey_get_private($user->private_key);
+
+    openssl_sign($stringToSign, $signature, $key, OPENSSL_ALGO_SHA256);
+    $signature = base64_encode($signature);
+
+    $signatureHeader = 'keyId="'.
+      route('activitypub.actor', ['slug' => $user->slug])
+      .'",headers="'.$signedHeaders.'",algorithm="rsa-sha256",signature="'.$signature.'"';
+
+    Log::info('Signature: '.$signatureHeader);
+
+    unset($headers['(request-target)']);
+
+    $headers['Signature'] = $signatureHeader;
+
+    return self::_headersToCurlArray($headers);
+  }
+
+
+
+
 
   public static function parseSignatureHeader($signature) {
     $parts = explode(',', $signature);

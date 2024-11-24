@@ -5,15 +5,25 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Log;
+use App\Traits\ModelFedi;
 
 
-
-class post extends Model
+class Post extends Model
 {
+
+    use ModelFedi;
+
+    public $APtype='article';
+    public $APtranslate=['summary'=>'name'];
+    public $summary='';
+
+
     protected $fillable = [
         'user_id', 'team_id', 'municipio_id', 'name', 'content','cover',
         'slug', 'ip' 
     ];
+
+
 
     // Relación con el creador del post (Usuario)
     public function creador()

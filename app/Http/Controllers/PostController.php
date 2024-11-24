@@ -51,11 +51,13 @@ class PostController extends Controller
      * @param string $slug
      * @return \Illuminate\View\View
      */
-    public function show($slug)
+    public function show(Request $request, $slug)
     {
         $post = Post::with('equipo', 'creador')->where('slug', $slug)->firstOrFail(); // Buscar post por slug
         Log::info('Post: '.$post->name);
-       
+        if ($request->wantsJson()) {
+            return response()->json($post->GetActivity());
+        }
         return view('posts.show', compact('post'));
     }
 
