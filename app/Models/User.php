@@ -36,7 +36,7 @@ class User extends Authenticatable
         'email',
         'password',
         'municipio_id',
-
+        'slug',
     ];
 
     /**
@@ -97,6 +97,11 @@ class User extends Authenticatable
         $count = User::where('slug', 'LIKE', "$slug%")->count()
             + Team::where('slug', 'LIKE', "$slug%")->count();
         return $count ? "{$slug}-{$count}" : $slug;
+    }
+
+    public function getHandleAttribute()
+    {
+        return "@{$this->slug}@".config('app.url');
     }
 
 }
