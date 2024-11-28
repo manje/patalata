@@ -20,9 +20,8 @@ class HTTPSignature {
 
 
   public static function sign(User &$user, $activity,$inbox) { // } $url-inbox, $body-actividad=false, $addlHeaders=[]) {
-    $digest = true;
-    #if($body)
-    #  $digest = self::_digest($body);
+    $digest = false;
+    if ($activity)
     $digest=self::_digest($activity);
 
     #$url=route('activitypub.inbox', ['slug' => $user->slug]);
@@ -33,10 +32,8 @@ class HTTPSignature {
     #$headers = array_merge($headers, $addlHeaders);
 
     $stringToSign = self::_headersToSigningString($headers);
-    Log::info('String to sign: '.$stringToSign);
 
     $signedHeaders = implode(' ', array_map('strtolower', array_keys($headers)));
-    Log::info('Signed headers: '.$signedHeaders);
 
     $key = openssl_pkey_get_private($user->private_key);
 
@@ -47,7 +44,6 @@ class HTTPSignature {
       route('activitypub.actor', ['slug' => $user->slug])
       .'",headers="'.$signedHeaders.'",algorithm="rsa-sha256",signature="'.$signature.'"';
 
-    Log::info('Signature: '.$signatureHeader);
 
     unset($headers['(request-target)']);
 
@@ -129,9 +125,16 @@ class HTTPSignature {
 
   protected static function _headersToSign($url, $digest=false) {
     $date = new DateTime('UTC');
-
+    if ($digest)
+      $headers = [
+        '(request-target)' => 'post '.parse_url($url, PHP_URL_PATH),
+        'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
+        'Host' => parse_url($url, PHP_URL_HOST),
+        'Content-Type' => 'application/activity+json',
+      ];
+    else
     $headers = [
-      '(request-target)' => 'post '.parse_url($url, PHP_URL_PATH),
+      '(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),
       'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
       'Host' => parse_url($url, PHP_URL_HOST),
       'Content-Type' => 'application/activity+json',

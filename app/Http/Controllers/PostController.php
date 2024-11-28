@@ -55,6 +55,34 @@ class PostController extends Controller
     {
         $post = Post::with('equipo', 'creador')->where('slug', $slug)->firstOrFail(); // Buscar post por slug
         Log::info('Post: '.$post->name);
+
+        $method = strtoupper($request->method());
+        $url = $request->fullUrl();
+        $headers = $request->headers->all();
+        $data = $request->getContent();
+    
+        // Construir el comando curl
+        $curlCommand = "curl -X {$method}";
+    
+        // Añadir los encabezados
+        foreach ($headers as $key => $values) {
+            foreach ($values as $value) {
+                $curlCommand .= " -H \"" . $key . ": " . $value . "\"";
+            }
+        }
+    
+        // Añadir el cuerpo de la solicitud si no está vacío y no es GET
+        if (!empty($data) && $method !== 'GET') {
+            $curlCommand .= " --data '" . addslashes($data) . "'";
+        }
+    
+        // Añadir la URL
+        $curlCommand .= " \"" . $url . "\"";
+    
+        // Loggear el comando curl
+        Log::info($curlCommand);        
+
+
         if ($request->wantsJson()) {
             return response()->json($post->GetActivity());
         }

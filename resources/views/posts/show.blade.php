@@ -38,11 +38,12 @@
                     <div class="md:w-1/2">
                     <p class='text-4xl font-bold'>{{ $post->name }}</p>
 
+
                     @if ($post->equipo)
                         <p class='text-2xl font-bold'>{{ $post->equipo->name }}</p>
                     @else
                         <p class='text-xl '>
-                          <img class="inline rounded-full w-10" src="{{ $post->creador->profile_photo_url }}" alt="{{ Auth::user()->name }}" />
+                          <img class="inline rounded-full w-10" src="{{ $post->creador->profile_photo_url }}" alt="{{ $post->creador->name }}">
                           {{ $post->creador->name }}
                         </p>
                     @endif

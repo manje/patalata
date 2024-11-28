@@ -10,10 +10,7 @@ use App\Models\ApFollow;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
 
-#use ActivityPhp\Server;
-
 use Illuminate\Support\Facades\Log;
-
 use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
@@ -57,15 +54,12 @@ class ActivityPub
 
     static function InBox($user,$activity)
     {
-        Log::info('ActivityPub InBox '.print_r($activity, true));
+        Log::info('ActivityPub InBox '.print_r($activity['type'],1));
         switch($activity['type']) {
             case 'Follow':
                 // creo ApFollow
                 $url=$activity['actor'];
-                $response = Http::withHeaders([
-                    'Accept' => 'application/activity+json',
-                ])->get($url);
-                $actor = $response->json();
+                $actor = self::GetUrlFirmado($user,$url);
                 #Primero borro todos los apFollow que tenga el mismo actor_id y mismo user_id
                 ApFollow::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
                 $apFollow = new ApFollow();
@@ -93,6 +87,56 @@ class ActivityPub
                 return true;
         }
         return true;
+    }
+
+    public function EnviarActividad($user,$json,$inbox)
+    {
+
+        $headers = HTTPSignature::sign($user, "", $inbox);
+        $ch = curl_init($inbox);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        #curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_HEADER, true);
+        $response = curl_exec($ch);
+        Log::info('Inbox response: '.$response);
+        $response=json_decode($response, true);
+        return $response;
+    }
+
+    static function GetUrlFirmado($user,$url)
+    {
+        // Generar encabezados firmados
+        $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET
+        Log::info('URL: '.$url);
+        $headers[]='Accept: application/json';
+        // Inicializar cURL para la solicitud GET
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Aplicar los encabezados firmados
+        curl_setopt($ch, CURLOPT_HEADER, true); // Incluir los encabezados en la respuesta
+    
+        // Ejecutar la solicitud
+        $response = curl_exec($ch);
+    
+        // Manejo de errores
+        if (curl_errno($ch)) {
+            Log::error('Error en la solicitud firmada GET: '.curl_error($ch));
+            return null;
+        }
+    
+        curl_close($ch);
+    
+        // Dividir los encabezados del cuerpo de la respuesta
+        list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
+    
+        Log::info('GET Response Headers: '.$responseHeaders);
+        Log::info('GET Response Body: '.$responseBody);
+    
+        return json_decode($responseBody,1); // Devolver el cuerpo de la respuesta
+        
+        
+
     }
 
 

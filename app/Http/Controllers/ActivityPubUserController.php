@@ -69,7 +69,7 @@ class ActivityPubUserController extends Controller
         
         Log::info('actor: ' . $activity['actor']);
         // Verifica la firma
-        if (!$this->verifySignature($activity,$path)) {
+        if (!$this->verifySignature($user,$activity,$path)) {
             Log::error('Invalid signature');
             return response()->json(['error' => 'Invalid signature'], 400);
         }
@@ -92,29 +92,46 @@ class ActivityPubUserController extends Controller
 
 
 
-private function verifySignature($activity,$path): bool
+private function verifySignature($user,$activity,$path): bool
 {
+    Log::info('verifySignature');
     if(!Rq::header('signature')) {
       return response()->json([
         'error' => 'Missing Signature header'
       ], 400);
     }
+    Log::info('1 verifySignature');
     $body = Rq::instance()->getContent();
     $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
     if(isset($signatureData['error']))
         return false;
+
+
     $url=$activity['actor'];
+    $actor=ActivityPub::GetUrlFirmado($user,$url);
+/*
     $response = Http::withHeaders([
         'Accept' => 'application/activity+json',
     ])->get($url);
     $actor = $response->json();
+*/
+    Log::info("actor: " . print_r($actor, true));
+
     if (!(isset($actor["publicKey"])))
         return false;
 
     $publicKey=$actor["publicKey"];
     $inputHeaders = Rq::instance()->headers->all();
-
     list($verified, $headers) = HTTPSignature::verify($publicKey['publicKeyPem'], $signatureData, $inputHeaders, $path, $body);
+    if (!($verified==1))
+    {
+        Log::info('verifySignature: ' . $publicKey['publicKeyPem']);
+        Log::info('signatureData: ' . print_r($signatureData, true));
+        Log::info('inputHeaders: ' . print_r($inputHeaders, true));
+        Log::info('path: ' . $path);
+        Log::info('body: ' . $body);
+    }
+
     return ($verified==1);
 }
 
