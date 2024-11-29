@@ -13,6 +13,9 @@
     <ul class="menu menu-horizontal px-1">
       <li><a href="{{ route('denuncias.index') }}" >Denuncias</a></li>
     </ul>
+    <ul class="menu menu-horizontal px-1">
+      <li><a href="{{ route('notas.index') }}" >Notas</a></li>
+    </ul>
   </div>
   <div class="flex-none">        
     @auth

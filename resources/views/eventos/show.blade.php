@@ -42,7 +42,7 @@
                         <p class='text-2xl font-bold'>{{ $evento->equipo->name }}</p>
                     @else
                         <p class='text-xl '>
-                          <img class="inline rounded-full w-10" src="{{ $evento->creador->profile_photo_url }}" alt="{{ Auth::user()->name }}" />
+                          <img class="inline rounded-full w-10" src="{{ $evento->creador->profile_photo_url }}" alt="{{ $evento->creador->name }}" />
                           {{ $evento->creador->name }}
                         </p>
                     @endif

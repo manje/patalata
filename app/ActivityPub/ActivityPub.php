@@ -5,7 +5,8 @@ namespace App\ActivityPub;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Post;
-use App\Models\ApFollow;
+use App\Models\Apfollower;
+use Illuminate\Support\Facades\Cache;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
@@ -15,7 +16,6 @@ use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
-use Request as Rq;
 
 
 class ActivityPub 
@@ -31,6 +31,7 @@ class ActivityPub
             'type' => 'Person',
             'preferredUsername' => $user->slug,
             'name' => $user->name,
+            'following' => route('activitypub.following', ['slug' => $user->slug]),
             'inbox' => route('activitypub.inbox', ['slug' => $user->slug]),
             'outbox' => route('activitypub.outbox', ['slug' => $user->slug]),            
             'publicKey' => [
@@ -50,32 +51,51 @@ class ActivityPub
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
 
-
+    static function GetActorByUrl($user,$url)
+    {
+        $key=$user->id."-".$url;
+        if ($out=Cache::get($key))
+            return $out;
+        $out=self::GetUrlFirmado($user,$url);
+        Cache::put($key,$out,60*24);
+        return $out;
+    }
 
     static function InBox($user,$activity)
     {
+        // Aquí llega la petición con la firma verificada
         Log::info('ActivityPub InBox '.print_r($activity['type'],1));
         switch($activity['type']) {
             case 'Follow':
-                // creo ApFollow
                 $url=$activity['actor'];
-                $actor = self::GetUrlFirmado($user,$url);
-                #Primero borro todos los apFollow que tenga el mismo actor_id y mismo user_id
-                ApFollow::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
-                $apFollow = new ApFollow();
+                $actor = self::GetActorByUrl($user,$url);
+                Log::debug('Petición de Follow de '.$url);
+                Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
+                $apFollow = new Apfollower();
                 $apFollow->actor_id = $activity['actor'];
-                $apFollow->actor_type = $actor['type'];
-                $apFollow->actor_preferred_username = $actor['preferredUsername'];
-                $apFollow->actor_inbox = $actor['inbox'];
                 $apFollow->user_id = $user->id;
                 $apFollow->save();
+                // Guardo el follow, pero tengo que aceptarlo
+                $activity=[
+                    '@context' => 'https://www.w3.org/ns/activitystreams',
+                    // esta ruta no existe
+                    'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$apFollow->id,
+                    'type' => 'Accept',
+                    'actor' => route('activitypub.actor', ['slug' => $user->slug]),
+                    'object' => $activity['id']
+                ];
+                // enviar la actividad
+                Log::info('Enviar aceptación de follow: '.print_r($activity,1));
+                $activity=json_encode($activity);
+                $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
+                Log::info('Respuesta: '.print_r($response,1));
                 return true;
             case 'Undo':
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        // borro ApFollow
-                        ApFollow::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
+                        Log::info('Petición de Undo de Follow de '.$activity['actor']);
+                        Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
                         return true;
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
@@ -89,9 +109,12 @@ class ActivityPub
         return true;
     }
 
+    /*
+    
+    ESO NO TIENE SENTIDO ESTANDO LA FUNCIÓN GetUrlFirmado
+
     public function EnviarActividad($user,$json,$inbox)
     {
-
         $headers = HTTPSignature::sign($user, "", $inbox);
         $ch = curl_init($inbox);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -100,6 +123,23 @@ class ActivityPub
         curl_setopt($ch, CURLOPT_HEADER, true);
         $response = curl_exec($ch);
         Log::info('Inbox response: '.$response);
+        $response=json_decode($response, true);
+        return $response;
+    }
+
+    */
+
+    static function EnviarActividadPOST($user,$json,$inbox)
+    {
+        Log::info("Envio POST a: $inbox");
+        Log::info('EnviarActividadPOST: '.$json);
+        $headers = HTTPSignature::sign($user, $json, $inbox);
+        $ch = curl_init($inbox);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
+        curl_setopt($ch, CURLOPT_HEADER, true);
+        $response = curl_exec($ch);
         $response=json_decode($response, true);
         return $response;
     }
@@ -129,19 +169,10 @@ class ActivityPub
     
         // Dividir los encabezados del cuerpo de la respuesta
         list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-    
-        Log::info('GET Response Headers: '.$responseHeaders);
-        Log::info('GET Response Body: '.$responseBody);
-    
         return json_decode($responseBody,1); // Devolver el cuerpo de la respuesta
         
         
 
     }
-
-
-
-
-
 }
 

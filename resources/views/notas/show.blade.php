@@ -1,25 +1,19 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ $denuncia->titulo }}
-        </h2>
-    </x-slot>
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="w-full h-64 relative">
-                    @if ($denuncia->cover)
-                    <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('{{ asset('storage/' . $denuncia->cover) }}');"></div>
+                    @if ($nota->cover)
+                    <div class="absolute inset-0 bg-cover bg-center" style="background-image: url('{{ asset('storage/' . $nota->cover) }}');"></div>
                     @endif
                     <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col justify-center px-4">
-
-                    <a href="{{ route('denuncias.show', $denuncia->slug) }}" class="text-white font-bold text-4xl hover:underline">
-                        {{ $denuncia->titulo }}
+                    <a href="{{ route('notas.show', $nota->slug) }}" class="text-white font-bold text-4xl hover:underline">
+                        {{ $nota->content }}
                     </a>
                     <div class="text-white text-sm">
-                        <span>{{ \Carbon\Carbon::parse($denuncia->fecha_inicio)->format('d M, H:s') }}</span> - 
-                        <span> {{ $denuncia->municipio->nombre }} ({{ $denuncia->municipio->provincia }})</span>
+                        <span>{{ \Carbon\Carbon::parse($nota->fecha_inicio)->format('d M, H:s') }}</span> - 
+                        <span> {{ $nota->municipio->nombre }} ({{ $nota->municipio->provincia }})</span>
                     </div>
                     </div>
                 </div>
@@ -27,19 +21,19 @@
                 <div class="p-6 bg-white border-b border-gray-200">
 
 
-                    <p class='text-4xl font-bold'>{{ $denuncia->titulo }}</p>
+                    <p class='text-4xl font-bold'>{{ $nota->content }}</p>
 
-                    @if ($denuncia->equipo)
-                        <p class='text-2xl font-bold'>{{ $denuncia->equipo->name }}</p>
+                    @if ($nota->equipo)
+                        <p class='text-2xl font-bold'>{{ $nota->equipo->name }}</p>
                     @else
                         <p class='text-xl '>
-                          <img class="inline rounded-full w-10" src="{{ $denuncia->creador->profile_photo_url }}" alt="{{ $denuncia->creador->name }}" />
-                          {{ $denuncia->creador->name }}
+                          <img class="inline rounded-full w-10" src="{{ $nota->creador->profile_photo_url }}" alt="{{ $nota->creador->name }}" />
+                          {{ $nota->creador->name }}
                         </p>
                     @endif
 
 
-                    <p> {{ $denuncia->descripcion }}</p>
+                    <p> {{ $nota->content }}</p>
 
 
 
@@ -49,18 +43,18 @@
 
 <!-- Mostrar archivos relacionados -->
 <div class="flex flex-wrap -mx-2">
-    @if($denuncia->cover)
+    @if($nota->cover)
         <div class="w-full md:w-1/2 lg:w-1/4 p-2">
-            <img src="{{ asset('storage/' . $denuncia->cover) }}" alt="Imagen adjunta" class="img-fluid w-full h-auto">
+            <img src="{{ asset('storage/' . $nota->cover) }}" alt="Imagen adjunta" class="img-fluid w-full h-auto">
             <!--br>
-            <a href="{{ asset('storage/' . $denuncia->cover) }}" target="_blank" class="btn btn-wide">
+            <a href="{{ asset('storage/' . $nota->cover) }}" target="_blank" class="btn btn-wide">
                 <i class="fas fa-download"></i> 
             Descargar archivo</a-->
         
 
         </div>
     @endif
-    @foreach ($denuncia->denunciaFiles as $file)
+    @foreach ($nota->notaFiles as $file)
         @php
             $fileType = pathinfo($file->file_path, PATHINFO_EXTENSION);
         @endphp
@@ -87,10 +81,6 @@
                 Descargar archivo</a>
 
             @endif
-                <!--br>
-                <a href="{{ Storage::url($file->file_path) }}" target="_blank" class="btn btn-xs btn-block">
-                    <i class="fas fa-download"></i> 
-                Descargar archivo</a-->
         </div>
     @endforeach
 </div>

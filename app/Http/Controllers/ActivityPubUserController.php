@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Nota;
 use App\Models\Post;
+use App\Models\Apfollower;
+
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
 
@@ -26,11 +29,7 @@ class ActivityPubUserController extends Controller
     {
         // Busca al usuario por su slug
         Log::info("getActor: " . $slug);
-        
         $user = User::where('slug', $slug)->firstOrFail();
-        Log::info('key public: ' . $user->public_key);
-
-        // Construye el objeto Actor en formato JSON-LD
         $actor = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id' => route('activitypub.actor', ['slug' => $user->slug]),
@@ -38,7 +37,8 @@ class ActivityPubUserController extends Controller
             'preferredUsername' => $user->slug,
             'name' => $user->name,
             'inbox' => route('activitypub.inbox', ['slug' => $user->slug]),
-            'outbox' => route('activitypub.outbox', ['slug' => $user->slug]),            
+            'outbox' => route('activitypub.outbox', ['slug' => $user->slug]),
+            'following' => route('activitypub.following', ['slug' => $user->slug]),
             'publicKey' => [
                 'id' => route('activitypub.actor', ['slug' => $user->slug]) . '#main-key',
                 'owner' => route('activitypub.actor', ['slug' => $user->slug]),
@@ -49,46 +49,47 @@ class ActivityPubUserController extends Controller
                 'mediaType' => 'image/png',
                 'url' => $user->profile_photo_url,
             ],
-
         ];
-
-        // Devuelve la respuesta en JSON
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
 
 
-    public function inbox(Request $request, $slug)
+    public function inbox(Request $request, $slug): JsonResponse
     {
         // Busca al usuario por su slug
         $user = User::where('slug', $slug)->firstOrFail();
         $path='/ap/users/'.$user->slug.'/inbox';
-
-        
         $activity = $request->json()->all();
         Log::info('actividad recibida: ' . $activity['type']);
-        
         Log::info('actor: ' . $activity['actor']);
         // Verifica la firma
         if (!$this->verifySignature($user,$activity,$path)) {
             Log::error('Invalid signature');
             return response()->json(['error' => 'Invalid signature'], 400);
         }
-        else
-            Log::info('Valid signature');
-        // Aquí puedes agregar lógica para manejar las actividades recibidas
-        // Ejemplo: Si es un 'Follow', registrar al usuario que sigue a otro.
-        
-        if ($activity['type'] === 'Follow') {
-            // Ejemplo: Registrar la relación de seguidor
-
-        }
-
-
         ActivityPub::InBox($user,$activity);
-
-
         return response()->json(['status' => 'ok'], 200);
     }
+
+    public function following($slug): JsonResponse
+    {
+        // Busca al usuario por su slug
+        $user = User::where('slug', $slug)->firstOrFail();
+        $followers = Apfollower::where('user_id', $user->id)->get();
+        $list=[];
+        foreach ($followers as $follower)
+            $list[]=$follower->actor_id;
+        $following = [
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id' => route('activitypub.following', ['slug' => $user->slug]),
+            'type' => 'Collection',
+            'totalItems' => count($list),
+            'orderedItems' => $list
+        ];
+        return response()->json($following, 200, ['Content-Type' => 'application/activity+json']);
+    }
+
+
 
 
 
@@ -100,7 +101,6 @@ private function verifySignature($user,$activity,$path): bool
         'error' => 'Missing Signature header'
       ], 400);
     }
-    Log::info('1 verifySignature');
     $body = Rq::instance()->getContent();
     $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
     if(isset($signatureData['error']))
@@ -109,13 +109,6 @@ private function verifySignature($user,$activity,$path): bool
 
     $url=$activity['actor'];
     $actor=ActivityPub::GetUrlFirmado($user,$url);
-/*
-    $response = Http::withHeaders([
-        'Accept' => 'application/activity+json',
-    ])->get($url);
-    $actor = $response->json();
-*/
-    Log::info("actor: " . print_r($actor, true));
 
     if (!(isset($actor["publicKey"])))
         return false;
@@ -194,37 +187,47 @@ private function verifySignature($user,$activity,$path): bool
         $user = User::where('slug', $slug)->firstOrFail();
 
         // Obtiene los artículos publicados por el usuario (último año)
+        $notas = Nota::where('user_id', $user->id)
+            ->where('created_at', '>=', now()->subYear())
+            ->orderBy('created_at', 'desc')
+            ->get();
         $posts = Post::where('user_id', $user->id)
             ->where('created_at', '>=', now()->subYear())
             ->orderBy('created_at', 'desc')
             ->get();
+        Log::info('Notas: ' . $notas->count());
+        Log::info('Posts: ' . $posts->count());
 
+        // Construyo un array mezclando notas y posts y ordenándolos por updated_at
+        
+        $list=[];
+        foreach ($posts as $activity)
+        {
+            $a=$activity->GetActivity();
+            Log::info('Actividad: ' . print_r($a['id'],1));
+            $list[]=$a;
+        }
+        foreach ($notas as $activity)
+        {
+            $a=$activity->GetActivity();
+            Log::info('Actividad: ' . print_r($a['id'],1));
+            $list[]=$a;
+        }
+        // ordeno $activity por updated
+        usort($list, function($a, $b) {
+            return $b['updated'] <=> $a['updated'];
+        });
 
         // Construye el contenedor del Outbox
         $outbox = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id' => route('activitypub.outbox', ['slug' => $user->slug]),
             'type' => 'OrderedCollection',
-            'totalItems' => $posts->count(),
-            'orderedItems' => $posts->map(function ($post) use ($user) {
-                return [
-                    'id' => route('posts.show', ['slug' => $post->slug]),
-                    'type' => 'Note',
-                    'published' => $post->created_at->toIso8601String(),
-                    'attributedTo' => route('activitypub.actor', ['slug' => $user->slug]),
-                    'content' => $post->content,
-                    'url' => route('posts.show', ['slug' => $post->slug]),
-                ];
-            }),
+            'totalItems' => count($list),
+            'orderedItems' => $list
         ];
-        // Devuelve el Outbox en formato JSON-LD
         return response()->json($outbox, 200, ['Content-Type' => 'application/activity+json']);
     }
-
-
-
-
-
 
 }
 

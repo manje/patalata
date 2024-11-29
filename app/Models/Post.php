@@ -13,7 +13,7 @@ class Post extends Model
 
     use ModelFedi;
 
-    public $APtype='article';
+    public $APtype='Article';
     public $APtranslate=['summary'=>'name'];
     public $summary='';
 
