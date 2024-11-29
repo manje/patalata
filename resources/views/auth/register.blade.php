@@ -16,12 +16,18 @@
 
             <div class="mt-4">
                 <x-label for="email" value="{{ __('Email') }}" />
-                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="username" />
+                <x-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email')" required autocomplete="email" />
+            </div>
+
+            <div class="mt-4 mb-4">
+                <x-label for="slug" value="{{ __('Username') }}" />
+                <div class="flex items-center">
+                    <span class="px-3 py-2 bg-gray-200 border border-gray-300 rounded-l-md text-gray-600">@</span>
+                    <x-input id="slug" class="block mt-1 w-full rounded-r-md" type="text" name="slug" :value="old('slug')" required autocomplete="username" />
+                </div>
             </div>
 
             <livewire:provincia-municipio-selector />
-
-
 
             <div class="mt-4">
                 <x-label for="password" value="{{ __('Password') }}" />
