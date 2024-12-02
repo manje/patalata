@@ -70,6 +70,16 @@ Route::get('/ap/users/{slug}/following', [ActivityPubUserController::class, 'fol
     ->name('activitypub.following')
     ->middleware('throttle:10,1'); // Opcional: limitar peticiones por seguridad
 
+Use App\Http\Controllers\FediversoController;
+
+
+Route::get('/fedi', [FediversoController::class, 'index'])->name('fediverso.index'); // Formulario para crear un nuevo post
+Route::get('/@{slug}', [FediversoController::class, 'profile'])->where('slug', '.*');
+
+
+
 
 Route::get('/.well-known/webfinger', [ActivityPubUserController::class, 'webFinger'])
     ->name('activitypub.webfinger');
+
+

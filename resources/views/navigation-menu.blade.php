@@ -16,6 +16,11 @@
     <ul class="menu menu-horizontal px-1">
       <li><a href="{{ route('notas.index') }}" >Notas</a></li>
     </ul>
+    @auth
+    <ul class="menu menu-horizontal px-1">
+      <li><a href="{{ route('fediverso.index') }}" >Fediverso</a></li>
+    </ul>
+    @endauth
   </div>
   <div class="flex-none">        
     @auth
