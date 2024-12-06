@@ -16,7 +16,7 @@ class Timeline extends Component
 
     public function mount($actor=false)
     {
-
+        $this->actor=$actor;
     }
 
     public function loadPosts()    

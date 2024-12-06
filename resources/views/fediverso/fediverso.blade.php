@@ -21,10 +21,10 @@
                                 varios enlaces a distintos perfiles:
                                 <br>
                                 <br>
-                                <a href='https://1.patalata.net/@lavillanavk@mastodon.social'>@lavillanavk@mastodon.social</a><br>
-                                <a href='https://1.patalata.net/@lacasainvisible@xarxa.cloud'>@lacasainvisible@xarxa.cloud</a><br>
-                                <a href='https://1.patalata.net/@infusionideologica@paquita.masto.host'>@infusionideologica@paquita.masto.host</a><br>
-                                <a href='https://1.patalata.net/@ElSaltoDiario@mastodon.social'>@ElSaltoDiario@mastodon.social</a><br>
+                                <a href='/@lacasainvisible@xarxa.cloud'>@lacasainvisible@xarxa.cloud</a><br>
+                                <a href='/@infusionideologica@paquita.masto.host'>@infusionideologica@paquita.masto.host</a><br>
+                                <a href='/@ElSaltoDiario@mastodon.social'>@ElSaltoDiario@mastodon.social</a><br>
+                                <a href='/@lavillanavk@mastodon.social'>@lavillanavk@mastodon.social</a><br>
                             </p> 
                         </div>
                         <livewire:fediverso.timeline   />
