@@ -34,9 +34,7 @@ class HTTPSignature {
     $stringToSign = self::_headersToSigningString($headers);
 
     $signedHeaders = implode(' ', array_map('strtolower', array_keys($headers)));
-
     $key = openssl_pkey_get_private($user->private_key);
-
     openssl_sign($stringToSign, $signature, $key, OPENSSL_ALGO_SHA256);
     $signature = base64_encode($signature);
 
@@ -100,6 +98,9 @@ class HTTPSignature {
         $headersToSign[$h] = $inputHeaders[$h][0];
       }
     }
+
+
+
     $signingString = self::_headersToSigningString($headersToSign);
 
     $verified = openssl_verify($signingString, base64_decode($signatureData['signature']), $publicKey, OPENSSL_ALGO_SHA256);

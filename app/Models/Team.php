@@ -8,6 +8,7 @@ use Laravel\Jetstream\Events\TeamDeleted;
 use Laravel\Jetstream\Events\TeamUpdated;
 use Laravel\Jetstream\Team as JetstreamTeam;
 use Illuminate\Support\Str; // Importar la clase Str
+use phpseclib3\Crypt\RSA;
 
 class Team extends JetstreamTeam
 {
@@ -23,6 +24,9 @@ class Team extends JetstreamTeam
         'name',
         'personal_team',
         'profile_image'
+    ];
+    protected $hidden = [
+        'private_key'
     ];
 
     /**
@@ -53,6 +57,11 @@ class Team extends JetstreamTeam
         parent::boot();
         static::creating(function ($team) {
             $team->slug = static::generateUniqueSlug($team->name);
+            $keyPair = RSA::createKey(2048); // Tamaño de clave recomendado: 2048 bits
+            $publicKey = $keyPair->getPublicKey()->toString('PKCS8');
+            $privateKey = $keyPair->toString('PKCS8');
+            $team->public_key = $publicKey;
+            $team->private_key = $privateKey;
         });
     }
 

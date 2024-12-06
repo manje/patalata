@@ -14,6 +14,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Support\Str; // Importar la clase Str
 use Illuminate\Contracts\Auth\MustVerifyEmail; 
 
+use phpseclib3\Crypt\RSA;
 
 class User extends Authenticatable
 {
@@ -89,6 +90,11 @@ class User extends Authenticatable
         parent::boot();
         static::creating(function ($user) {
             $user->slug = static::generateUniqueSlug($user->name);
+            $keyPair = RSA::createKey(2048); // Tamaño de clave recomendado: 2048 bits
+            $publicKey = $keyPair->getPublicKey()->toString('PKCS8');
+            $privateKey = $keyPair->toString('PKCS8');
+            $user->public_key = $publicKey;
+            $user->private_key = $privateKey;
         });
     }
 

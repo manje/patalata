@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 use App\Models\User;
+use App\Models\Timeline;
 use App\ActivityPub\ActivityPub;
 
 
@@ -20,7 +21,7 @@ class FediversoController extends Controller
      */
     public function index()
     {
-        //
+        
         return view('fediverso.fediverso');
     
     }
@@ -48,9 +49,7 @@ class FediversoController extends Controller
             {
                 return "No encontrado";
             }
-            $outbox=ActivityPub::GetOutbox($user,$actor);
-            if (count($outbox)>50)                $outbox=array_slice($outbox,0,50);
-            return view('fediverso.profile', ['actor' => $actor, 'outbox' => $outbox]);
+            return view('fediverso.profile', ['actor' => $actor]);
         }
         // error 404
         return "No implementado 404";

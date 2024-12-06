@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\Post;
 use App\Models\Apfollower;
 use App\Models\Apfollowing;
+use App\Models\Timeline;
+
 use Illuminate\Support\Facades\Cache;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,13 +20,14 @@ use Illuminate\Support\Facades\Http;
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
 
+use HTMLPurifier;
+use HTMLPurifier_Config;
+
 
 class ActivityPub 
 {
-    public function getActor($user): JsonResponse
+    static function getActor($user): JsonResponse
     {
-        Log::info('key public: ' . $user->public_key);
-
         // Construye el objeto Actor en formato JSON-LD
         $actor = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
@@ -45,9 +48,7 @@ class ActivityPub
                 'mediaType' => 'image/png',
                 'url' => $user->profile_photo_url,
             ],
-
         ];
-
         // Devuelve la respuesta en JSON
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
@@ -109,7 +110,7 @@ class ActivityPub
                     }
                 }
             }
-            Log::info('Error al obtener el actor de '.$username);
+            Log::error('Error al obtener el actor de '.$username);
             return false;
         }
 
@@ -135,6 +136,8 @@ class ActivityPub
         ];
         $activity=json_encode($activity);
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
+        Log::info("devolver true o false segun el codigo de response $response");
+        return true;
         return $response;
     }
     
@@ -159,7 +162,9 @@ class ActivityPub
             ];
             $activity=json_encode($activity);
             $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
+            Log::info("hay que controlar aqui codigo respuesta $response");
             Apfollowing::where('actor_id', $id)->where('user_id', $user->id)->delete();
+            return true;
             return $response;
         }
         return false;
@@ -169,6 +174,15 @@ class ActivityPub
     {
         $id=$actor['id'];
         $Follow = Apfollowing::where('actor_id', $id)->where('user_id', $user->id)->first();
+        if ($Follow)
+            return true;
+        return false;
+    }
+
+    static function tesigue($user,$actor)
+    {
+        $id=$actor['id'];
+        $Follow = Apfollower::where('actor_id', $id)->where('user_id', $user->id)->first();
         if ($Follow)
             return true;
         return false;
@@ -189,7 +203,7 @@ class ActivityPub
             $list=$outbox['orderedItems'];
             while (isset($outbox['next']))
             {
-                $outbox=self::GetUrlFirmado($user,$outbox['next']);
+                #$outbox=self::GetUrlFirmado($user,$outbox['next']);
                 $list=array_merge($list,$outbox['orderedItems']);
                 if (count($list)>$limite)
                     return array_slice($list,0,$limite);
@@ -203,12 +217,19 @@ class ActivityPub
     static function InBox($user,$activity)
     {
         // Aquí llega la petición con la firma verificada
-        Log::info('ActivityPub InBox '.print_r($activity['type'],1));
+        if (isset($activity["object"]["attributedTo"]))
+                        if ( $activity["object"]["attributedTo"] != $activity['actor'] )
+                        {
+                            Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
+                            return response()->json(['error'=>'actor not equal attributedTo'],400);
+                        }
+
+
+
         switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
                 $actor = self::GetActorByUrl($user,$url);
-                Log::debug('Petición de Follow de '.$url);
                 Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
                 $apFollow = new Apfollower();
                 $apFollow->actor_id = $activity['actor'];
@@ -223,23 +244,19 @@ class ActivityPub
                     'actor' => route('activitypub.actor', ['slug' => $user->slug]),
                     'object' => $activity['id']
                 ];
-                // enviar la actividad
-                Log::info('Enviar aceptación de follow: '.print_r($activity,1));
                 $activity=json_encode($activity);
                 $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-                Log::info('Respuesta: '.print_r($response,1));
-                return true;
+                Log::warning('hay que gestionar la respuesta si falla mandar aceptar follow: '.print_r($response,1));
+                return response()->json(['message' => 'Follow request received'],202);
             case 'Undo':
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Log::info('Petición de Undo de Follow de '.$activity['actor']);
-                        Log::info(print_r($activity,1));
                         Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
-                        return true;
+                        return response()->json(['message' => 'Follow request received'],202);
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
-                        return true;
+                        return response()->json(['message' => 'Unknow activity '.$activity['type']],202);
                 }
             }
             case 'Accept':
@@ -249,14 +266,49 @@ class ActivityPub
                         Log::info('Petición de Accept de Follow de '.$activity['actor']);
                         // pongo Apfollowing - accept a true
                         Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->update(['accept' => true]);
-                        return true;
+                        return response()->json(['message' => 'Accept'],202);
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
-                        return true;
+                        return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
                 }
+            }
+            case 'Create':
+            {
+                switch ($activity["object"]["type"]) {
+                    case 'Note':
+                        if ( $activity["object"]["attributedTo"] != $activity['actor'] )
+                        {
+                            Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'] );
+                            return false;
+                        }
+                        $line= new Timeline();
+                        if ($user instanceof User) $line->user_id=$user->id;
+                        if ($user instanceof Team) $line->team_id=$user->id;
+                        $line->activity=$activity["object"]['id'];
+                        Cache::put($activity["object"]['id'],$activity["object"],60*8);
+                        $line->save();
+                        Log::info("Actividad guardada en el timeline");
+                        return response()->json(['message' => 'Accept'],202);
+                    default:
+                        Log::info(print_r($activity,1));
+                        Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
+                        return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
+                }
+            }
+            case 'Announce':
+            {
+                $line= new Timeline();
+                if ($user instanceof User) $line->user_id=$user->id;
+                if ($user instanceof Team) $line->team_id=$user->id;
+                $line->activity=$activity['id'];
+                Cache::put($activity['id'],$activity,60*8);
+                $line->save();
+                Log::info("Actividad RT guardada en el timeline");
+                return response()->json(['message' => 'Accept'],202);
             }
             default:
                 Log::info('Unknown activity type: ' . $activity['type']);
+                return response()->json(['message' => 'Unknow activity '.$activity['type']],501);
                 return true;
         }
         return true;
@@ -273,12 +325,17 @@ class ActivityPub
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         curl_setopt($ch, CURLOPT_HEADER, true);
         $response = curl_exec($ch);
-        $response=json_decode($response, true);
-        return $response;
+        $response=json_decode($response, true);        
+        $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        return $codigo;
+        #return $response;
     }
 
     static function GetUrlFirmado($user,$url)
     {
+        $response=Cache::get($url);
+        if ($response)
+            return $response;
         if (!($user))
         {
             // La misma petición pero sin firmar
@@ -286,45 +343,61 @@ class ActivityPub
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
             $response = curl_exec($ch);
+            list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
+            Cache::put($url,json_decode($responseBody,1),60*8);
             return json_decode($response,1);
-
-            
         }
-
-        $id=$user->id."-".$url;
-        if ($out=Cache::get($id))
+        $idcache=$user->id."-".$url;
+        if ($out=Cache::get($idcache))
             return $out;
-
         // Generar encabezados firmados
         $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET
-        Log::info('URL (esto debería siempre cachearse): '.$url);
         $headers[]='Accept: application/json';
         // Inicializar cURL para la solicitud GET
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Aplicar los encabezados firmados
         curl_setopt($ch, CURLOPT_HEADER, true); // Incluir los encabezados en la respuesta
-    
         // Ejecutar la solicitud
         $response = curl_exec($ch);
-    
         // Manejo de errores
         if (curl_errno($ch)) {
             Log::error('Error en la solicitud firmada GET: '.curl_error($ch));
             return null;
         }
-    
         curl_close($ch);
-    
         // Dividir los encabezados del cuerpo de la respuesta
         list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-        Cache::put($id,json_decode($responseBody,1),60*24);
-        
-
+        Cache::put($idcache,json_decode($responseBody,1),60*8);
+        Cache::put($url,json_decode($responseBody,1),60*8);
         return json_decode($responseBody,1); // Devolver el cuerpo de la respuesta
-        
-        
-
     }
+
+
+    static function limpiarHtml($html)
+    {
+        // Configurar HTMLPurifier
+        $config = HTMLPurifier_Config::createDefault();
+        $config->set('HTML.SafeIframe', true);
+        $config->set('HTML.SafeEmbed', true);
+        $config->set('HTML.SafeObject', true);
+        #$config->set('HTML.Allowed', 'p,b,strong,i,em,a[href|title|target],img[src|alt|title|width|height],ul,ol,li,br,span[style],h1,h2,h3,h4,h5,h6,blockquote,pre,code,table,thead,tbody,tr,td,th,video[src|type|width|height|controls|autoplay],audio[src|type|controls],iframe[src|width|height|frameborder|allowfullscreen]');
+        $config->set('HTML.Allowed', 'p,b,strong,i,em,a[href|title|target],img[src|alt|title|width|height],ul,ol,li,br,span[style],h1,h2,h3,h4,h5,h6,blockquote,pre,code,table,thead,tbody,tr,td,th');
+        $config->set('Attr.AllowedFrameTargets', ['_blank']); // Permitir abrir enlaces en otra ventana
+
+        // Instanciar HTMLPurifier
+        $purifier = new HTMLPurifier($config);
+        $purifiedHtml = $purifier->purify($html);
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $purifiedHtml);
+        $links = $dom->getElementsByTagName('a');
+        foreach ($links as $link) 
+        {
+            $link->setAttribute('target', '_blank');
+        }
+        return $dom->saveHTML($dom->documentElement);    
+    }
+
+
 }
 

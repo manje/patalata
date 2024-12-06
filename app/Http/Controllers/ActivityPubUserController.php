@@ -11,9 +11,6 @@ use App\Models\Apfollower;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
 
-#use ActivityPhp\Server;
-#use ActivityPhp\Server\Http\HttpSignature;
-
 use Illuminate\Support\Facades\Log;
 
 use Illuminate\Support\Facades\Http;
@@ -28,28 +25,8 @@ class ActivityPubUserController extends Controller
     public function getActor($slug): JsonResponse
     {
         // Busca al usuario por su slug
-        Log::info("getActor: " . $slug);
         $user = User::where('slug', $slug)->firstOrFail();
-        $actor = [
-            '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id' => route('activitypub.actor', ['slug' => $user->slug]),
-            'type' => 'Person',
-            'preferredUsername' => $user->slug,
-            'name' => $user->name,
-            'inbox' => route('activitypub.inbox', ['slug' => $user->slug]),
-            'outbox' => route('activitypub.outbox', ['slug' => $user->slug]),
-            'following' => route('activitypub.following', ['slug' => $user->slug]),
-            'publicKey' => [
-                'id' => route('activitypub.actor', ['slug' => $user->slug]) . '#main-key',
-                'owner' => route('activitypub.actor', ['slug' => $user->slug]),
-                'publicKeyPem' => $user->public_key,
-            ],
-            'icon' => [
-                'type' => 'Image',
-                'mediaType' => 'image/png',
-                'url' => $user->profile_photo_url,
-            ],
-        ];
+        $actor= ActivityPub::getActor($user);
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
 
@@ -60,15 +37,31 @@ class ActivityPubUserController extends Controller
         $user = User::where('slug', $slug)->firstOrFail();
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
-        Log::info('actividad recibida: ' . $activity['type']);
-        Log::info('actor: ' . $activity['actor']);
-        // Verifica la firma
-        if (!$this->verifySignature($user,$activity,$path)) {
-            Log::error('Invalid signature');
-            return response()->json(['error' => 'Invalid signature'], 400);
+        Log::info("----------------------inbox $slug ".$activity['type']);
+                        #        xxxxxxxxxxxxxxxxxxx
+
+                        if (isset($activity["object"]["attributedTo"]))
+                          $at=$activity["object"]["attributedTo"];
+                        else
+                          $at="???";
+
+        if (!$this->verifySignature($user,$activity,$path)) 
+        {
+            Log::error('Invalid signature inbox '.$activity['type']);
+            if (isset($activity['object']['type']))
+                if ($activity['object']['type']=='Note')
+                    if (isset($activity['object']['inReplyTo']))
+                    {
+                        Log::info("YZ $slug IS reply: ".$activity['object']['inReplyTo']. " o " . $activity['object']['id']   .  " at $at au ".$activity['actor']);
+                    }
+            return response()->json(['error' => 'Invalid signature'], 401);
         }
-        ActivityPub::InBox($user,$activity);
-        return response()->json(['status' => 'ok'], 200);
+        if (isset($activity['object']['type']))    
+            if ($activity['object']['type']=='Note')
+                if (isset($activity['object']['inReplyTo']))
+                    Log::info("YZ $slug VS reply: ".$activity['object']['inReplyTo'].  " o " .  $activity['object']['id']   .   " at $at au ".$activity['actor']);
+
+        return ActivityPub::InBox($user,$activity);
     }
 
     public function following($slug): JsonResponse
@@ -89,47 +82,30 @@ class ActivityPubUserController extends Controller
         return response()->json($following, 200, ['Content-Type' => 'application/activity+json']);
     }
 
-
-
-
-
-private function verifySignature($user,$activity,$path): bool
-{
-    Log::info('verifySignature');
-    if(!Rq::header('signature')) {
-      return response()->json([
-        'error' => 'Missing Signature header'
-      ], 400);
-    }
-    $body = Rq::instance()->getContent();
-    $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
-    if(isset($signatureData['error']))
-        return false;
-
-
-    $url=$activity['actor'];
-    $actor=ActivityPub::GetUrlFirmado($user,$url);
-
-    if (!(isset($actor["publicKey"])))
-        return false;
-
-    $publicKey=$actor["publicKey"];
-    $inputHeaders = Rq::instance()->headers->all();
-    list($verified, $headers) = HTTPSignature::verify($publicKey['publicKeyPem'], $signatureData, $inputHeaders, $path, $body);
-    if (!($verified==1))
-    {
-        Log::info('verifySignature: ' . $publicKey['publicKeyPem']);
-        Log::info('signatureData: ' . print_r($signatureData, true));
-        Log::info('inputHeaders: ' . print_r($inputHeaders, true));
-        Log::info('path: ' . $path);
-        Log::info('body: ' . $body);
-    }
-
-    return ($verified==1);
-}
-
     
+    private function verifySignature($user,$activity,$path): bool
+    {
+        if(!Rq::header('signature')) {
+          return response()->json([
+            'error' => 'Missing Signature header'
+          ], 400);
+        }
+        $body = Rq::instance()->getContent();
+        $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
+        if(isset($signatureData['error']))
+            return false;
+    
+        $url=$activity['actor'];
+        Log::info('Verificando firma de '.$url);
+        $actor=ActivityPub::GetActorByUrl($user,$url);
+        if (!(isset($actor["publicKey"])))
+            return false;
 
+        $publicKey=$actor["publicKey"];
+        $inputHeaders = Rq::instance()->headers->all();
+        list($verified, $headers) = HTTPSignature::verify($publicKey['publicKeyPem'], $signatureData, $inputHeaders, $path, $body);
+        return ($verified==1);
+    }
 
 
     public function webFinger(Request $request)
@@ -179,14 +155,7 @@ private function verifySignature($user,$activity,$path): bool
     public function outbox($slug): JsonResponse
     {
         Log::info('Nueva petición de salida en el buzón de ' . $slug);
-        // hago log con los datos de la petición
-        Log::info(request()->all());
-
-
-        // Busca al usuario por su slug
         $user = User::where('slug', $slug)->firstOrFail();
-
-        // Obtiene los artículos publicados por el usuario (último año)
         $notas = Nota::where('user_id', $user->id)
             ->where('created_at', '>=', now()->subYear())
             ->orderBy('created_at', 'desc')
@@ -195,22 +164,15 @@ private function verifySignature($user,$activity,$path): bool
             ->where('created_at', '>=', now()->subYear())
             ->orderBy('created_at', 'desc')
             ->get();
-        Log::info('Notas: ' . $notas->count());
-        Log::info('Posts: ' . $posts->count());
-
-        // Construyo un array mezclando notas y posts y ordenándolos por updated_at
-        
         $list=[];
         foreach ($posts as $activity)
         {
             $a=$activity->GetActivity();
-            Log::info('Actividad: ' . print_r($a['id'],1));
             $list[]=$a;
         }
         foreach ($notas as $activity)
         {
             $a=$activity->GetActivity();
-            Log::info('Actividad: ' . print_r($a['id'],1));
             $list[]=$a;
         }
         // ordeno $activity por updated

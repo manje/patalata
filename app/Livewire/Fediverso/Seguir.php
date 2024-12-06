@@ -14,7 +14,6 @@ class Seguir extends Component
 
     public function mount($actor)    
     {
-
         $this->actor=$actor;
         $this->siguiendo=$this->siguiendo();
     }
@@ -31,16 +30,16 @@ class Seguir extends Component
     {
         $user=auth()->user();
         if ($user)
-            ActivityPub::dejarDeSeguir($user, $this->actor);
-        $this->siguiendo=false;
+            if (ActivityPub::dejarDeSeguir($user, $this->actor))
+                $this->siguiendo=false;
     }
 
     public function seguir()
     {
         $user=auth()->user();
         if ($user)
-            ActivityPub::seguir($user, $this->actor);
-        $this->siguiendo=true;
+            if (ActivityPub::seguir($user, $this->actor))
+                $this->siguiendo=true;
     }
 
     public function render()
