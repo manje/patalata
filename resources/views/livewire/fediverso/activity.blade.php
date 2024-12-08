@@ -1,41 +1,34 @@
-
 <div class="
 @if ($activity['type']  != 'Announce')
 border-b
 @endif
-py-2"
+p-2"
 wire:init="load" >
 
-
 @if ($loading)
-        <div class="flex-1 flex items-center justify-center">
-            <div class="text-center">
-            <p class="mt-20"><span class="loading loading-ring loading-lg"></span> Cargando...</p>
-            </div>
+    <div class="flex-1 flex items-center justify-center mt-2">
+        <div class="text-center">
+        <p class="mt-2"><span class="loading loading-ring loading-lg"></span> Cargando...</p>
         </div>
+    </div>
 @else
-
-
-
-
     @if (isset($activity['error']))
         {{ $activity['error'] }}
     @else
-      
         @switch($activity['type'])
             @case('Announce')
                 <div class="flex text-gray-500">
                     <span >Rebotado por {{ $activity['actor']['preferredUsername'] }}</span>
                     <div class="ml-14 flex-1 text-right">
-                        {{ $activity['published'] }}
+                        {{ $activity['published']->diffForHumans() }}
                     </div> 
                 </div>
                 <div>
-                    <livewire:fediverso.activity :activity="$activity['object']"   />
+                    <livewire:fediverso.activity :activity="$activity['object']"  :diferido="true" :key="$activity['id']" />
                 </div>
                 @break
           @case('Create')
-              <livewire:fediverso.activity :activity="$activity['object']"  :key="$activity['object']['id']" />
+              <livewire:fediverso.activity :activity="$activity['object']"  :diferido="true"  :key="$activity['object']['id']" />
               @break
           @case('Note')
                 @if (isset($activity['isreply']))
@@ -57,15 +50,19 @@ wire:init="load" >
                     <div class="avatar">
                         <div class="w-12 rounded-full">
                             @if (isset($activity['attributedTo']['icon']['url']))
-                            <img src="{{ $activity['attributedTo']['icon']['url'] }}" alt="Avatar">
+                            <a href="/{{"@"}}{{ $activity['attributedTo']['preferredUsername'] }}{{"@"}}{{ explode("/",$activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                                <img src="{{ $activity['attributedTo']['icon']['url'] }}" alt="Avatar">
+                            </a>
                             @endif
                         </div>
                     </div>
                     <div>
                         <h2 class="font-bold text-lg">
+                            @if (isset($activity['attributedTo']['preferredUsername']))
                             <a href="/{{"@"}}{{ $activity['attributedTo']['preferredUsername'] }}{{"@"}}{{ explode("/",$activity['attributedTo']['inbox'])[2] }}" class="text-lg">
                                 {{ $activity['attributedTo']['name'] }}
                             </a>
+                            @endif
                         </h2>
                         <p class="text-sm text-gray-500">
                             <a href="/{{"@"}}{{ $activity['attributedTo']['preferredUsername'] }}{{"@"}}{{ explode("/",$activity['attributedTo']['inbox'])[2] }}" class="text-lg">
@@ -75,6 +72,22 @@ wire:init="load" >
                         </p>
                         <p class="mt-2">
                         {!! $activity['content'] !!}
+                        @if (isset($activity['attachment']))
+                            @foreach ($activity['attachment'] as $attachment)
+                                @switch ($attachment['mediaType'])
+                                    @case ('image/jpeg')
+                                        <img src="{{ $attachment['url'] }}" class="mt-2 w-full border border-gray-300">
+                                        @break
+                                    @default
+                                    @case ('video/mp4')
+                                        <video src="{{ $attachment['url'] }}" class="mt-2 w-full border border-gray-300"></video>
+                                        
+                                        @break
+                                        {{ $attachment['mediaType']}}
+                                        {{ print_r($attachment)}}
+                                @endswitch
+                            @endforeach
+                        @endif
                         </p>
                     </div>
                 </div>
@@ -104,7 +117,7 @@ wire:init="load" >
                             {{ $activity['replies']}}
                         @endif
                         @endif
-                        <span>Comentar</span>
+                        <span>Respuestas</span>
                     </button>
                 </div>
               @break

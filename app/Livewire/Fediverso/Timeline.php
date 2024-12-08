@@ -11,12 +11,87 @@ use App\Models\Timeline as TL;
 class Timeline extends Component
 {
     public $timeline=null;
-    private $user=null;
+    public $user=null;
     public $actor=null;
+    public $nuevas=0;
+    public $nuevaslist=null;
+    public $primero=false;
+    public $serial=0;
+    public $siguienteprimero=false;
+    public $numactividades=50;
+    public $ultimo=0;
+
+    protected $listeners = ['loadMore'];
 
     public function mount($actor=false)
     {
         $this->actor=$actor;
+    }
+
+    public function loadMore()
+    {
+        if ($this->actor) return true;
+        if ($this->user)
+        {
+            $list=TL::where('user_id',$this->user->id)->where('id','<', $this->ultimo)->orderBy('created_at', 'desc')->take(5)->get();
+            foreach ($list as $item)
+            {
+                $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                if (isset($a['id']))
+                {
+                    $idtl=$item->id;
+                    $this->timeline[$idtl]=$a;
+                }
+            }
+            if (count($list)>0) $this->ultimo=$item->id;
+
+        }
+
+    }
+
+    public function VerNuevas()
+    {
+        if (count($this->nuevaslist)>0)
+        {
+            $this->timeline=$this->nuevaslist+$this->timeline;
+            $this->nuevaslist=[];
+            $this->nuevas=0;
+            $this->serial++;
+            $this->primero=$this->siguienteprimero;
+        }
+    }
+
+    public function Nuevas()
+    {
+
+        if ($this->actor)
+        {
+            $this->nuevas=0;
+
+        }
+        if ($this->user)
+        if ($this->primero)
+        {
+            # nº nuevas, count
+            $list=TL::where('user_id',$this->user->id)->where('id','>', $this->primero->id)->count();
+            if ($list>0)
+            {
+                $this->siguienteprimero=false;
+                $this->nuevas=$list;
+                $list=TL::where('user_id',$this->user->id)->where('id','>', $this->primero->id)->orderBy('created_at', 'desc')->take($list)->get();
+                $this->nuevaslist=[];
+                foreach ($list as $item)
+                {
+                    if ($this->siguienteprimero===false) $this->siguienteprimero=$item;
+                    $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                    if (isset($a['id']))
+                    {
+                        $idtl=$item->id;
+                        $this->nuevaslist[$idtl]=$a;
+                    }
+                }
+            }
+        }
     }
 
     public function loadPosts()    
@@ -31,15 +106,23 @@ class Timeline extends Component
         }
         if ($this->user)
         {
-            $list=TL::where('user_id',$this->user->id)->orderBy('created_at','desc')->take(50)->get();
+            $this->primero=false;
+            $list=TL::where('user_id',$this->user->id)->orderBy('created_at','desc')->take($this->numactividades)->get();
             foreach ($list as $item)
             {
-                $this->timeline[]=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                if ($this->primero===false) $this->primero=$item;
+                $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                if (isset($a['id']))
+                {
+                    $idtl=$item->id;
+                    $this->timeline[$idtl]=$a;
+                }
             }
+            $this->ultimo=$item->id;
         }
     }
     public function render()
     {
-        return view('livewire.fediverso.timeline', ['timeline' => $this->timeline]);
+        return view('livewire.fediverso.timeline', ['timeline' => $this->timeline,'nuevas' => $this->nuevas,'serial' => $this->serial]);
     }
 }

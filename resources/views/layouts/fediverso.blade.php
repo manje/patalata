@@ -23,9 +23,10 @@
                 @livewire('fediverso-navigation-menu')
             </div>
             <div class="w-3/4">
-                {{ $slot }}
+                <div class="mx-auto max-w-4xl border-x-2">
+                    {{ $slot }}
+                </div>
             </div>
-        </div>
         @stack('modals')
 
         @livewireScripts

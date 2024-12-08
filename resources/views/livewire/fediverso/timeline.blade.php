@@ -1,13 +1,18 @@
-<div wire:init="loadPosts" >
-
-
-
-
-
+<div wire:init="loadPosts" wire:poll.5s="Nuevas">
     @if ($timeline)
-        @foreach ($timeline as $status)
+        @if ($nuevas>0)
+        <div class="m-4"  >
+            <div role="alert" class="alert"  wire:click="VerNuevas;">
+                <i class="fa fa-bell"></i>
+                <span wire:target="VerNuevas" wire:loading.remove>{{$nuevas}} unread messages. Tap to see.</span>
+                <span wire:target="VerNuevas" wire:loading.delay class="loading loading-ring loading-md"></span>
+            </div>
+        </div>
+        @endif
+
+        @foreach ($timeline as $key=> $status)
             @if (isset($status['id']))
-            <livewire:fediverso.activity :activity="$status" :key="$status['id']" />
+            <livewire:fediverso.activity :activity="$status" :diferido="false" :key="$status['id'].$serial" />
             @endif
         @endforeach
 
