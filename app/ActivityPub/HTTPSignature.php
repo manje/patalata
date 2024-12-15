@@ -1,20 +1,15 @@
 <?php
-namespace App\ActivityPub;
-
-
-
-use DateTime;
-use App\Models\User;
-
-
-
-use Illuminate\Support\Facades\Log;
-
 
 /*
 Adaptación de https://github.com/aaronpk/Nautilus/blob/main/app/ActivityPub/HTTPSignature.php
 */
 
+namespace App\ActivityPub;
+
+use DateTime;
+use App\Models\User;
+
+use Illuminate\Support\Facades\Log;
 
 class HTTPSignature {
 
@@ -74,20 +69,17 @@ class HTTPSignature {
         'error' => 'keyId is not a URL: '.$signatureData['keyId']
       ];
     }
-
     if(!isset($signatureData['headers']) || !isset($signatureData['signature'])) {
       return [
         'error' => 'Signature is missing headers or signature parts'
       ];
     }
-
     return $signatureData;
   }
 
   public static function verify($publicKey, $signatureData, $inputHeaders, $path, $body) {
     // TODO: Not sure how to determine the algorithm used, but everyone seems to use SHA256 right now
     $digest = 'SHA-256='.base64_encode(hash('sha256', $body, true));
-
     $headersToSign = [];
     foreach(explode(' ',$signatureData['headers']) as $h) {
       if($h == '(request-target)') {
@@ -98,13 +90,8 @@ class HTTPSignature {
         $headersToSign[$h] = $inputHeaders[$h][0];
       }
     }
-
-
-
     $signingString = self::_headersToSigningString($headersToSign);
-
     $verified = openssl_verify($signingString, base64_decode($signatureData['signature']), $publicKey, OPENSSL_ALGO_SHA256);
-
     return [$verified, $signingString];
   }
 
@@ -131,14 +118,20 @@ class HTTPSignature {
         '(request-target)' => 'post '.parse_url($url, PHP_URL_PATH),
         'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
         'Host' => parse_url($url, PHP_URL_HOST),
-        'Content-Type' => 'application/activity+json',
-      ];
+        'Accept' => 'application/activity+json, application/ld+json, application/json' ,
+        #'Accept' => 'application/ld+json',
+        #'Accept' => 'application/json',
+        'Content-Type' => 'application/json',
+    ];
     else
     $headers = [
       '(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),
       'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
       'Host' => parse_url($url, PHP_URL_HOST),
-      'Content-Type' => 'application/activity+json',
+      'Accept' => 'application/activity+json, application/ld+json, application/json' ,
+      #'Accept' => 'application/ld+json',
+      #'Accept' => 'application/json',
+      'Content-Type' => 'application/json',
     ];
 
     if($digest)

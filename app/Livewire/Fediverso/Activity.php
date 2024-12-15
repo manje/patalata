@@ -48,16 +48,19 @@ class Activity extends Component
         }
         if (isset($this->activity['actor']))
             if (is_string($this->activity['actor']))
-                $this->activity['actor']=ActivityPub::GetObjectByUrl($this->user , $this->activity['actor']);
+                $this->activity['actor']=ActivityPub::GetActorByUrl($this->user , $this->activity['actor']);
         if (isset($this->activity['published'])) $this->activity['published']=Carbon::parse($this->activity['published']);
         if (isset($this->activity['object']))
             if (is_string($this->activity['object']))    $this->activity['object']=ActivityPub::GetObjectByUrl($this->user , $this->activity['object']);
         if (isset($this->activity['attributedTo']))
-            if (is_string($this->activity['attributedTo']))    
+            if (is_string($this->activity['attributedTo']))
+            {
                 $this->activity['attributedTo']=ActivityPub::GetObjectByUrl($this->user , $this->activity['attributedTo']);
-        if (isset($this->activity['replies']))  $this->activity['replies']=$this->CountCollection($this->activity['replies']);
-        if (isset($this->activity['likes']))  $this->activity['likes']=$this->CountCollection($this->activity['likes']);
-        if (isset($this->activity['shares']))  $this->activity['shares']=$this->CountCollection($this->activity['shares']);
+                if (!(isset($this->activity['attributedTo']['preferredUsername']))) $this->activity['error']='Error en attributedTo';
+            }
+        if (isset($this->activity['replies']))  $this->activity['replies']=ActivityPub::GetColeccion($this->user , $this->activity['replies'],true);
+        if (isset($this->activity['likes']))  $this->activity['likes']=ActivityPub::GetColeccion($this->user , $this->activity['likes'],true);
+        if (isset($this->activity['shares']))  $this->activity['shares']=ActivityPub::GetColeccion($this->user , $this->activity['shares'],true);
         if (isset($this->activity['inReplyTo']))  
         {
             if (is_string($this->activity['inReplyTo']))
@@ -82,39 +85,12 @@ class Activity extends Component
                 unset($this->activity['isreply']);
             }
         }
-        
-        if (isset($this->activity['type']))
-        {
-            if ($this->activity['type']=="Note")
-            {
-                $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
-            }
-        }
-        if ($this->activity['type']=="Note")
-        if (!isset($this->activity['attributedTo']))
-            $this->activity['error']="Error, sin attributedTo ";
+
+        if (isset($this->activity['content']))
+            $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
+        #if ($this->activity['type']=="Question")            Log::info(print_r($this->activity,1));
     }
 
-    public function CountCollection($collection)
-    {
-        if (isset($collection['totalItems'])) return $collection['totalItems'];
-        if (isset($collection['first'])) 
-        {
-            if (isset($collection['first']['next']))
-            {
-                $listado=ActivityPub::GetObjectByUrl($this->user,$collection['first']['next']);
-                $list=$listado['items'];
-                while (isset($list['next']))
-                {
-                    $listado=ActivityPub::GetObjectByUrl($this->user,$list['next']);
-                    $list=array_merge($list,$listado['items']);
-                }
-                return count($list);
-            } 
-            return "??";
-        }
-        return "?";
-    }
 
     public function verorigen()
     {

@@ -30,37 +30,16 @@ class ActivityPubUserController extends Controller
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
 
-
     public function inbox(Request $request, $slug): JsonResponse
     {
         // Busca al usuario por su slug
         $user = User::where('slug', $slug)->firstOrFail();
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
-        Log::info("----------------------inbox $slug ".$activity['type']);
-                        #        xxxxxxxxxxxxxxxxxxx
-
-                        if (isset($activity["object"]["attributedTo"]))
-                          $at=$activity["object"]["attributedTo"];
-                        else
-                          $at="???";
-
         if (!$this->verifySignature($user,$activity,$path)) 
         {
-            Log::error('Invalid signature inbox '.$activity['type']);
-            if (isset($activity['object']['type']))
-                if ($activity['object']['type']=='Note')
-                    if (isset($activity['object']['inReplyTo']))
-                    {
-                        Log::info("YZ $slug IS reply: ".$activity['object']['inReplyTo']. " o " . $activity['object']['id']   .  " at $at au ".$activity['actor']);
-                    }
             return response()->json(['error' => 'Invalid signature'], 401);
         }
-        if (isset($activity['object']['type']))    
-            if ($activity['object']['type']=='Note')
-                if (isset($activity['object']['inReplyTo']))
-                    Log::info("YZ $slug VS reply: ".$activity['object']['inReplyTo'].  " o " .  $activity['object']['id']   .   " at $at au ".$activity['actor']);
-
         return ActivityPub::InBox($user,$activity);
     }
 
@@ -96,7 +75,6 @@ class ActivityPubUserController extends Controller
             return false;
     
         $url=$activity['actor'];
-        Log::info('Verificando firma de '.$url);
         $actor=ActivityPub::GetActorByUrl($user,$url);
         if (!(isset($actor["publicKey"])))
             return false;
@@ -147,14 +125,8 @@ class ActivityPubUserController extends Controller
         return response()->json($webfinger, 200, ['Content-Type' => 'application/jrd+json']);
     }
 
-
-
-
-
-
     public function outbox($slug): JsonResponse
     {
-        Log::info('Nueva petición de salida en el buzón de ' . $slug);
         $user = User::where('slug', $slug)->firstOrFail();
         $notas = Nota::where('user_id', $user->id)
             ->where('created_at', '>=', now()->subYear())

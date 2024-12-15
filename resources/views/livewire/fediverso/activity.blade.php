@@ -13,12 +13,20 @@ wire:init="load" >
     </div>
 @else
     @if (isset($activity['error']))
+    <pre>
         {{ $activity['error'] }}
+    </pre>
     @else
         @switch($activity['type'])
             @case('Announce')
                 <div class="flex text-gray-500">
-                    <span >Rebotado por {{ $activity['actor']['preferredUsername'] }}</span>
+                    <span>
+                        Rebotado por <a href='/{{'@'}}{{ $activity['actor']['userfediverso'] }}'   >{{ $activity['actor']['userfediverso'] }}</a>
+                    </span>
+
+
+
+
                     <div class="ml-14 flex-1 text-right">
                         {{ $activity['published']->diffForHumans() }}
                     </div> 
@@ -26,11 +34,137 @@ wire:init="load" >
                 <div>
                     <livewire:fediverso.activity :activity="$activity['object']"  :diferido="true" :key="$activity['id']" />
                 </div>
-                @break
-          @case('Create')
-              <livewire:fediverso.activity :activity="$activity['object']"  :diferido="true"  :key="$activity['object']['id']" />
-              @break
-          @case('Note')
+            @break
+            @case('Create')
+                <livewire:fediverso.activity :activity="$activity['object']"  :diferido="true"  :key="$activity['object']['id']" />
+            @break
+            @case('Event')
+                <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
+
+                    <div class="avatar">
+                        <div class="w-12 rounded-full">
+                            @if (isset($activity['attributedTo']['icon']['url']))
+                            <a href="/{{ "@" }}{{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                                <img src="{{ $activity['attributedTo']['icon']['url'] }}" alt="Avatar">
+                            </a>
+                            @endif
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="font-bold text-lg">
+                            @if (isset($activity['attributedTo']['name']))
+                            <a href="/{{ "@" }}{{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                                {{ $activity['attributedTo']['name'] }}
+                            </a>
+                            @endif
+                        </h2>
+                        <p class="text-sm text-gray-500">
+                            <a href="/{{ "@" }}{{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                                {{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}
+                            </a>
+                            {{ $activity['published']->diffForHumans() }}
+                        </p>
+                        <div class="mt-2">
+                            <h3 class="text-xl font-semibold">{{ $activity['name'] ?? 'Evento' }}</h3>
+                            <p class="mt-1 text-gray-700">
+                                {{ $activity['summary'] ?? 'Sin descripción disponible.' }}
+                            </p>
+                            @if (isset($activity['location']))
+                            <p class="mt-2 text-sm text-gray-500">
+                                <i class="fa-solid fa-location-dot mr-1"></i> 
+                                {{ $activity['location']['name'] ?? $activity['location']['address'] ?? 'Ubicación no especificada' }}
+                            </p>
+                            @endif
+                            @if (isset($activity['startTime']))
+                            <p class="mt-1 text-sm text-gray-500">
+                                <i class="fa-solid fa-calendar-alt mr-1"></i> 
+                                Empieza: {{ \Carbon\Carbon::parse($activity['startTime'])->format('d M Y, H:i') }}
+                            </p>
+                            @endif
+                            @if (isset($activity['endTime']))
+                            <p class="mt-1 text-sm text-gray-500">
+                                <i class="fa-solid fa-calendar-check mr-1"></i> 
+                                Termina: {{ \Carbon\Carbon::parse($activity['endTime'])->format('d M Y, H:i') }}
+                            </p>
+                            @endif
+                            @if (isset($activity['url']))
+                            <p class="mt-1 text-sm text-gray-500">
+                                <i class="fa-solid fa-link mr-1"></i> 
+                                <a href="{{ $activity['url'] }}" target="_blank" class="text-blue-500">Ver en la web</a>
+                            </p>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            @break
+
+
+            @case('Question')
+            <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
+
+                <div class="avatar">
+                    <div class="w-12 rounded-full">
+                        @if (isset($activity['attributedTo']['icon']['url']))
+                        <a href="/{{ "@" }}{{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                            <img src="{{ $activity['attributedTo']['icon']['url'] }}" alt="Avatar">
+                        </a>
+                        @endif
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="font-bold text-lg">
+                        @if (isset($activity['attributedTo']['name']))
+                        <a href="/{{ "@" }}{{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                            {{ $activity['attributedTo']['name'] }}
+                        </a>
+                        @endif
+                    </h2>
+                    <p class="text-sm text-gray-500">
+                        <a href="/{{ "@" }}{{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}" class="text-lg">
+                            {{ $activity['attributedTo']['preferredUsername'] }}{{ "@" }}{{ explode("/", $activity['attributedTo']['inbox'])[2] }}
+                        </a>
+                        {{ $activity['published']->diffForHumans() }}
+                    </p>
+                    <div class="mt-2">
+                        <p class="mt-2 text-gray-700">
+                            {!! $activity['content'] ?? 'Sin descripción para esta pregunta.' !!}
+                        </p>
+
+                        @if (isset($activity['oneOf']) && is_array($activity['oneOf']))
+                        <div class="mt-4">
+                            <h4 class="font-bold text-md mb-2">Opciones:</h4>
+                            <ul class="list-disc pl-5 text-gray-600">
+                                @foreach ($activity['oneOf'] as $option)
+                                <li>
+                                    {{ $option['name'] ?? 'Opción sin nombre' }}
+                                    @if (isset($option['replies']))
+                                    @if (isset($option['totalItems']))
+                                    <span class="text-sm text-gray-500 ml-2">({{ $option['votes']['totalItems'] }} votos)</span>
+                                    @endif
+                                    @endif
+                                </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                        @endif
+                    </div>
+
+                    @if (isset($activity['endTime']))
+                    <p class="mt-4 text-sm text-gray-500">
+                        <i class="fa-solid fa-clock mr-1"></i>
+                        La votación termina: {{ \Carbon\Carbon::parse($activity['endTime'])->format('d M Y, H:i') }}
+                    </p>
+                    @endif
+                </div>
+            </div>
+            @break
+
+
+
+
+            @case('Note')
                 @if (isset($activity['isreply']))
                     @if ($origen)
                             <livewire:fediverso.activity :activity="$activity['isreply']"   />
@@ -72,59 +206,72 @@ wire:init="load" >
                         </p>
                         <p class="mt-2">
                         {!! $activity['content'] !!}
-                        @if (isset($activity['attachment']))
-                            @foreach ($activity['attachment'] as $attachment)
-                                @switch ($attachment['mediaType'])
-                                    @case ('image/jpeg')
-                                        <img src="{{ $attachment['url'] }}" class="mt-2 w-full border border-gray-300">
-                                        @break
-                                    @default
-                                    @case ('video/mp4')
-                                        <video src="{{ $attachment['url'] }}" class="mt-2 w-full border border-gray-300"></video>
-                                        
-                                        @break
-                                        {{ $attachment['mediaType']}}
-                                        {{ print_r($attachment)}}
-                                @endswitch
-                            @endforeach
-                        @endif
                         </p>
                     </div>
-                </div>
-                <div class="mt-2 flex space-x-4 text-gray-500">
-                    <button class="flex items-center space-x-1">
-                        <i class="fa-regular fa-heart mr-2"></i>
-                        @if (isset($activity['likes']))
-                        @if ($activity['likes']!=0)
-                            {{ $activity['likes']}}
-                        @endif
-                        @endif
-                        <span>Me gusta</span>
-                    </button>
-                    <button class="flex items-center space-x-1">
-                    <i class="fa-solid fa-retweet mr-2"></i>
-                        @if (isset($activity['shares']))
-                        @if ($activity['shares']!=0)
-                            {{ $activity['shares']}}
-                        @endif
-                        @endif
-                        <span>Retwittear</span>
-                    </button>
-                    <button class="flex items-center space-x-1">
-                        <i class="fa-solid fa-comment mr-2"></i>
-                        @if (isset($activity['replies']))
-                        @if ($activity['replies']!=0)
-                            {{ $activity['replies']}}
-                        @endif
-                        @endif
-                        <span>Respuestas</span>
-                    </button>
                 </div>
               @break
           @default
               Tipo no implementado: {{ $activity['type'] }}
-      @endswitch
-    @endif
+        @endswitch
+        @if ($activity['type']!='Announce')
+
+
+            @if (isset($activity['attachment']))
+                @foreach ($activity['attachment'] as $media)
+                    <div class="mt-2">
+                        @switch ($media['mediaType'])
+                            @case ('image/jpeg')
+                            @case ('image/png')
+                            @case ('image/gif')
+                            @case ('image/svg+xml')
+                            @case ('image/webp')
+                                <img src="{{ $media['url'] }}" class="mt-2 w-full border border-gray-300">
+                            @break
+                            @case ('video/mp4')
+                            @case ('video/ogg')
+                            @case ('video/webm')
+                                <video src="{{ $media['url'] }}" class="mt-2 w-full border border-gray-300"></video>
+                            @break
+                            @default
+                            {{ $media['mediaType']}}
+                            {{ print_r($media)}}
+                        @endswitch
+                    </div>
+                @endforeach
+            @endif
+
+
+            <div class="mt-2 flex space-x-4 text-gray-500">
+                <button class="flex items-center space-x-1">
+                    <i class="fa-regular fa-heart mr-2"></i>
+                    @if (isset($activity['likes']))
+                    @if ($activity['likes']!=0)
+                        {{ $activity['likes']}}
+                    @endif
+                    @endif
+                    <span>Me gusta</span>
+                </button>
+                <button class="flex items-center space-x-1">
+                <i class="fa-solid fa-retweet mr-2"></i>
+                    @if (isset($activity['shares']))
+                    @if ($activity['shares']!=0)
+                        {{ $activity['shares']}}
+                    @endif
+                    @endif
+                    <span>Retwittear</span>
+                </button>
+                <button class="flex items-center space-x-1">
+                    <i class="fa-solid fa-comment mr-2"></i>
+                    @if (isset($activity['replies']))
+                    @if ($activity['replies']!=0)
+                        {{ $activity['replies']}}
+                    @endif
+                    @endif
+                    <span>Respuestas</span>
+                </button>
+            </div>
+        @endif
+      @endif
 @endif
 </div>
 

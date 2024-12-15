@@ -45,6 +45,7 @@ class Denuncia extends Model
         static::creating(function ($denuncia) {
             if (empty($denuncia->slug)) {
                 $slug = Str::slug(date("Y")."_".$denuncia->titulo);
+                if (strlen($slug)>30) $slug=substr($slug,0,30);
                 while (self::where('slug', $slug)->exists()) {
                     $slug .= "_" . Str::random(2);
                 }

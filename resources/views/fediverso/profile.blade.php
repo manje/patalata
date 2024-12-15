@@ -6,7 +6,6 @@
                 background-image: url('{{ $actor['image']['url'] }}');
                 @endif
             ">
-            
         </div>
         <!-- foto de perfil superpuesta la mitad sobre el banner sueprior -->
         <div class="w-full flex -mt-12  pl-6">
@@ -19,11 +18,23 @@
             <livewire:fediverso.seguir :actor="$actor" />
             </div>
         </div>
-        <div class="mt-1 pl-6  pb-4 border-b-2">
-            <strong>{{ $actor['name'] }}</strong>
-            <br>            
+        <div class="mt-1 pl-6  pb-4 ">
+            <div class='font-bold'>{{ $actor['name'] }}</div>
             {{ $actor['preferredUsername'] }}@<span class="ml-1 bg-blue-200 p-2 rounded">{{ explode("/",$actor['inbox'])[2] }}</span>
         </div>
+        <div class="mt-1 pl-6  pb-4 border-b-2 font-bold">
+                @if (isset($actor['countfollowing']))
+                    @if (is_integer($actor['countfollowing']))
+                    <span class=''>{{ number_format($actor['countfollowing'],0,'.','.') }} siguiendo</span>
+                    @endif
+                @endif
+                @if (isset($actor['countfollowers']))
+                    @if (is_integer($actor['countfollowing']))
+                    <span class='ml-4'>{{ number_format($actor['countfollowers'],0,'.','.') }} seguidores</span>
+                    @endif
+                @endif
+        </div>
+
         <div class="w-full">
             @auth
                 <livewire:fediverso.timeline :actor="$actor" >

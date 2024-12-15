@@ -48,6 +48,7 @@ class Evento extends Model
             if (empty($evento->slug)) {
                 $t=date("Y")."_".$evento->titulo;
                 $slug=Str::slug($t);
+                if (strlen($slug)>30) $slug=substr($slug,0,30);
                 Log::info("1er Slug: ".$slug);
                 Log::info(print_r(Evento::where('slug', $slug)->count(),true));
                 if (Evento::where('slug', $slug)->count()>0) 

@@ -22,11 +22,12 @@ use App\ActivityPub\ActivityPub;
 
 use HTMLPurifier;
 use HTMLPurifier_Config;
+use DateTime;
 
 
 class ActivityPub 
 {
-    static function getActor($user): JsonResponse
+    static function getActor($user)
     {
         // Construye el objeto Actor en formato JSON-LD
         $actor = [
@@ -49,26 +50,57 @@ class ActivityPub
                 'url' => $user->profile_photo_url,
             ],
         ];
-        // Devuelve la respuesta en JSON
-        return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
+        return $actor;
     }
 
     static function GetActorByUrl($user,$url)
     {
-        $key=$user->id."-".$url;
-        if ($out=Cache::get($key))
+        if (!(is_string($url))) return false;
+        if (strlen($url)<6) return false;
+        if (substr($url,0,8)!='https://') return false;
+        $key=$user->id."-actor-".$url;
+        if ($out=Cache::get($key)) 
+        {
+          if (isset($out['userfediverso']))
             return $out;
-        $out=self::GetUrlFirmado($user,$url);
-        Cache::put($key,$out,60*24);
+        }
+        $out=self::GetObjectByUrl($user,$url);
+        if (is_null($out)) return ['error'=>'response null'];
+        if (isset($out['error'])) return $out;
+        if (isset($out['following'])) $out['countfollowing']=self::GetColeccion($user,$out['following'],true);
+        if (isset($out['followers'])) $out['countfollowers']=self::GetColeccion($user,$out['followers'],true);
+        $d=explode("/",$url)[2];
+        if (isset($out['preferredUsername']))
+            $out['userfediverso']=$out['preferredUsername']."@$d";
+        else
+            return false;
+        Cache::put($key,$out,3600*24*5);
         return $out;
     }
+
     static function GetObjectByUrl($user,$url)
     {
+        if (is_array($url)) return $url;
+        $d=explode("/",$url)[2];
+        $idca="$d ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
+        $num=(int)Cache::get($idca);
+        if ($num++>100) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
         $key=$user->id."-o-".$url;
         if ($out=Cache::get($key))
             return $out;
+        Cache::put($idca,$num,3600);
         $out=self::GetUrlFirmado($user,$url);
-        Cache::put($key,$out,60*24);
+        if (!(is_array($out)))
+        {
+            $out=['error'=>$out];
+            Cache::put($key,$out,600);
+        }
+        if (isset($out['error']))
+        {
+            Cache::put($key,$out,600);
+        }
+        else
+            Cache::put($key,$out,3600*4);
         return $out;
     }
 
@@ -92,8 +124,9 @@ class ActivityPub
                     $actor=self::GetUrlFirmado($user,$url);
                 if ($actor)
                 {
-                    Cache::put($idcache,$actor,60*24);
+                    Cache::put($idcache,$actor,3600*24);
                     $url=false;
+                    if (isset($actor['links']))
                     foreach ($actor['links'] as $link)
                     {
                         if ($url===false) // Si no hemos encontrado el self
@@ -120,13 +153,11 @@ class ActivityPub
     {
         if ($actor['id']==route('activitypub.actor', ['slug' => $user->slug]))
             return false;
-        // creo Apfollowing
         $Follow = new Apfollowing();
         $Follow->actor_id = $actor['id'];
         $Follow->user_id = $user->id;
         $Follow->save();
         $id=$Follow->id;
-        Log::info('Seguir a '.$actor['id'].' nº registro '.$id);
         $activity=[
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$id,
@@ -138,13 +169,11 @@ class ActivityPub
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
         Log::info("devolver true o false segun el codigo de response $response");
         return true;
-        return $response;
     }
     
     static function dejarDeSeguir($user,$actor)
     {
-        $id=$actor['id'];
-        $Follow = Apfollowing::where('actor_id', $id)->where('user_id', $user->id)->first();
+        $Follow = Apfollowing::where('actor_id', $actor['id'])->where('user_id', $user->id)->first();
         if ($Follow)
         {
             $id=$Follow->id;
@@ -163,9 +192,8 @@ class ActivityPub
             $activity=json_encode($activity);
             $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
             Log::info("hay que controlar aqui codigo respuesta $response");
-            Apfollowing::where('actor_id', $id)->where('user_id', $user->id)->delete();
+            Apfollowing::where('actor_id', $actor['id'])->where('user_id', $user->id)->delete();
             return true;
-            return $response;
         }
         return false;
     }
@@ -210,7 +238,76 @@ class ActivityPub
             }
             return $list;
         }
-        return $out;
+        return $list;
+    }
+
+    static function GetColeccion($user,$idlist,$solocount=false)
+    {
+        if (is_string($idlist))
+            $col=self::GetObjectByUrl($user,$idlist);
+        else
+            $col=$idlist;
+        if ($solocount)
+            if (isset($col['totalItems'])) return $col['totalItems'];
+        if ((isset($col['error'])) && ($solocount)) return "?";
+        if (isset($col['error'])) return $col;
+        if (!isset($col['type']))
+            $items=$col;
+        else
+            $items=[];
+        if ( 
+            (isset($col['orderedItems'])) 
+            || 
+            (
+            (  isset($col['type']) &&  ($col['type']=='OrderedCollection')) 
+            )
+           )
+        {
+            $items=[];
+            if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
+            {
+                $col=self::GetObjectByUrl($user,$col['first']);
+                if (isset($col['error']))
+                {
+                    if ($solocount) return "?";
+                    return $col;
+                }
+            }
+            
+            if (isset($col['orderedItems']))
+                $items=$col['orderedItems'];
+            if (isset($col['first'])) $col['next']=$col['first'];
+            $co=0;
+            while (isset($col['next']))
+            {
+                $col=self::GetObjectByUrl($user,$col['next']);
+                if (isset($col['error']))
+                {
+                    if ($solocount) return "?";
+                    return $col;
+                }
+                if (isset($col['orderedItems']))
+                    $items=array_merge($items,$col['orderedItems']);
+            }
+        }
+        if (isset($items['error'])) return $items;
+        if ($items===null)
+        {
+            if ($solocount)
+                return "?";
+            else
+                return false;
+        }
+        if (count($items)==0)
+        {
+
+        }
+        else
+            Cache::Put($idlist,$items,3600*24*365);
+        if ($solocount)
+            return count($items);
+        else
+            return $items;
     }
 
 
@@ -218,14 +315,11 @@ class ActivityPub
     {
         // Aquí llega la petición con la firma verificada
         if (isset($activity["object"]["attributedTo"]))
-                        if ( $activity["object"]["attributedTo"] != $activity['actor'] )
-                        {
-                            Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
-                            return response()->json(['error'=>'actor not equal attributedTo'],400);
-                        }
-
-
-
+            if ( $activity["object"]["attributedTo"] != $activity['actor'] )
+            {
+                Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
+                return response()->json(['error'=>'actor not equal attributedTo'],400);
+            }
         switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
@@ -235,10 +329,9 @@ class ActivityPub
                 $apFollow->actor_id = $activity['actor'];
                 $apFollow->user_id = $user->id;
                 $apFollow->save();
-                // Guardo el follow, pero tengo que aceptarlo
                 $activity=[
                     '@context' => 'https://www.w3.org/ns/activitystreams',
-                    // esta ruta no existe
+                    // esta ruta no existe pero es única
                     'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$apFollow->id,
                     'type' => 'Accept',
                     'actor' => route('activitypub.actor', ['slug' => $user->slug]),
@@ -254,6 +347,9 @@ class ActivityPub
                     case 'Follow':
                         Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
                         return response()->json(['message' => 'Follow request received'],202);
+                    case 'Announce':
+                        Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->where('user_id', $user->id)->delete();
+                       return response()->json(['message' => 'Undo request received'],202);
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
                         return response()->json(['message' => 'Unknow activity '.$activity['type']],202);
@@ -263,8 +359,6 @@ class ActivityPub
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Log::info('Petición de Accept de Follow de '.$activity['actor']);
-                        // pongo Apfollowing - accept a true
                         Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->update(['accept' => true]);
                         return response()->json(['message' => 'Accept'],202);
                     default:
@@ -274,25 +368,32 @@ class ActivityPub
             }
             case 'Create':
             {
-                switch ($activity["object"]["type"]) {
-                    case 'Note':
-                        if ( $activity["object"]["attributedTo"] != $activity['actor'] )
-                        {
-                            Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'] );
-                            return false;
-                        }
-                        $line= new Timeline();
-                        if ($user instanceof User) $line->user_id=$user->id;
-                        if ($user instanceof Team) $line->team_id=$user->id;
-                        $line->activity=$activity["object"]['id'];
-                        Cache::put($activity["object"]['id'],$activity["object"],60*8);
-                        $line->save();
-                        Log::info("Actividad guardada en el timeline");
-                        return response()->json(['message' => 'Accept'],202);
-                    default:
-                        Log::info(print_r($activity,1));
-                        Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
-                        return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
+                // Compruebo si el actor está entre los seguidos del usuario
+                $seguido=Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->first();
+                if (is_null($seguido))
+                    Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id);
+                else
+                {
+                    switch ($activity["object"]["type"]) {
+                        case 'Note':
+                            if ( $activity["object"]["attributedTo"] != $activity['actor'] )
+                            {
+                                Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'] );
+                                return false;
+                            }
+                            $line= new Timeline();
+                            if ($user instanceof User) $line->user_id=$user->id;
+                            if ($user instanceof Team) $line->team_id=$user->id;
+                            $line->actor_id=$activity['actor'];
+                            $line->activity=$activity["object"]['id'];
+                            Cache::put($activity["object"]['id'],$activity["object"],3600*8);
+                            $line->save();
+                            return response()->json(['message' => 'Accept'],202);
+                        default:
+                            Log::info(print_r($activity,1));
+                            Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
+                            return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
+                    }
                 }
             }
             case 'Announce':
@@ -301,15 +402,58 @@ class ActivityPub
                 if ($user instanceof User) $line->user_id=$user->id;
                 if ($user instanceof Team) $line->team_id=$user->id;
                 $line->activity=$activity['id'];
-                Cache::put($activity['id'],$activity,60*8);
+                $line->actor_id=$activity['actor'];
+                Cache::put($activity['id'],$activity,3600*8);
                 $line->save();
-                Log::info("Actividad RT guardada en el timeline");
                 return response()->json(['message' => 'Accept'],202);
             }
+            case 'Like':
+            {
+                Log::info('Petición de Like '.print_r($activity,1));
+                return response()->json(['message' => 'No implementado'],501);
+            }
+            case 'Delete':
+            {
+                if ($activity['actor']==$activity['object'])
+                {
+                    Cache::put($activity['object'],['error'=>'Deleted'],3600*24*30);
+                    Cache::put($user->id.'-'.$activity['object'],['error'=>'Deleted'],3600*24*30);
+                    return response()->json(['message' => 'Accepted'],202);
+                }
+                if (isset($activity['object']['id']))
+                {
+                    Timeline::where('activity', $activity['object']['id'])->where('actor_id',$activity['actor'])->delete();
+                    return response()->json(['message' => 'Accepted'],202);
+                }
+                Log::info('Petición de Delete '.print_r($activity,1));
+                return response()->json(['message' => 'No implementado'],501);
+            }
+            case 'Update':
+                $seguido=Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->first();
+                if (is_null($seguido))
+                    Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id);
+                else
+                {
+                    if (isset($activity['object']['id']))
+                    {
+                        Cache::forget($activity['object']['id']);
+                        Cache::forget($user->id.'-'.$activity['object']['id']);
+                        Timeline::where('activity', $activity['object']['id'])->where('actor_id',$activity['actor'])->delete();
+                        $line= new Timeline();
+                        if ($user instanceof User) $line->user_id=$user->id;
+                        if ($user instanceof Team) $line->team_id=$user->id;
+                        $line->actor_id=$activity['actor'];
+                        $line->activity=$activity["object"]['id'];
+                        Cache::put($activity["object"]['id'],$activity["object"],3600*8);
+                        $line->save();
+                        return response()->json(['message' => 'Accept'],202);
+                    }
+                    Log::info('Update activity: '.print_r($activity,1));
+                }
+                return response()->json(['message' => 'No implementado'],501);
             default:
                 Log::info('Unknown activity type: ' . $activity['type']);
                 return response()->json(['message' => 'Unknow activity '.$activity['type']],501);
-                return true;
         }
         return true;
     }
@@ -328,48 +472,49 @@ class ActivityPub
         $response=json_decode($response, true);        
         $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
         return $codigo;
-        #return $response;
     }
 
     static function GetUrlFirmado($user,$url)
     {
         $response=Cache::get($url);
-        if ($response)
-            return $response;
+        if ($response) return $response;
         if (!($user))
         {
+            $res=Cache::get($url);
+            if ($res)
+                return $res;
             // La misma petición pero sin firmar
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
+            $date = new DateTime('UTC');
+            $headers = [
+                '(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),
+                'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
+                'Host' => parse_url($url, PHP_URL_HOST),
+                'Accept' => 'application/activity+json, application/ld+json, application/json' ,
+                'Content-Type' => 'application/json',
+            ];
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             $response = curl_exec($ch);
             list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-            Cache::put($url,json_decode($responseBody,1),60*8);
             return json_decode($response,1);
         }
         $idcache=$user->id."-".$url;
-        if ($out=Cache::get($idcache))
-            return $out;
-        // Generar encabezados firmados
         $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET
-        $headers[]='Accept: application/json';
-        // Inicializar cURL para la solicitud GET
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Aplicar los encabezados firmados
+        curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
         curl_setopt($ch, CURLOPT_HEADER, true); // Incluir los encabezados en la respuesta
-        // Ejecutar la solicitud
         $response = curl_exec($ch);
-        // Manejo de errores
         if (curl_errno($ch)) {
-            Log::error('Error en la solicitud firmada GET: '.curl_error($ch));
-            return null;
+            Log::info('error curl',[curl_errno($ch),curl_error($ch)]);
+            return ['error'=>curl_error($ch)];
         }
         curl_close($ch);
-        // Dividir los encabezados del cuerpo de la respuesta
         list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-        Cache::put($idcache,json_decode($responseBody,1),60*8);
-        Cache::put($url,json_decode($responseBody,1),60*8);
         return json_decode($responseBody,1); // Devolver el cuerpo de la respuesta
     }
 

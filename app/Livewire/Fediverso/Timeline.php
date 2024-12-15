@@ -18,7 +18,7 @@ class Timeline extends Component
     public $primero=false;
     public $serial=0;
     public $siguienteprimero=false;
-    public $numactividades=50;
+    public $numactividades=20;
     public $ultimo=0;
 
     protected $listeners = ['loadMore'];
@@ -54,10 +54,13 @@ class Timeline extends Component
         if (count($this->nuevaslist)>0)
         {
             $this->timeline=$this->nuevaslist+$this->timeline;
+            $max=$this->nuevas+20;
+            if (count($this->timeline)>$max) $this->timeline=array_slice($this->timeline,0,$max);
             $this->nuevaslist=[];
             $this->nuevas=0;
             $this->serial++;
             $this->primero=$this->siguienteprimero;
+
         }
     }
 

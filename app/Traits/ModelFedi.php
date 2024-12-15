@@ -12,8 +12,6 @@ use App\Models\Post;
 
 use Illuminate\Support\Facades\Log;
 
-
-
 trait ModelFedi
 {
     /**
@@ -75,7 +73,8 @@ trait ModelFedi
             ];
             if ($this->cover)
             {
-                $activity['attachment'] = [
+                $activity['attachment'] = [];
+                $activity['attachment'][] = [
                     'type' => 'Image',
                     'mediaType' => 'image/jpeg',
                     'url' => asset('storage/'.$this->cover)
@@ -83,7 +82,6 @@ trait ModelFedi
             }
             return $activity;
         }
-        Log::info('Actividad sin tipo válido ' . $this->APtype);
         return false;
     }
 

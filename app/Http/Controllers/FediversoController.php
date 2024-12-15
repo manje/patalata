@@ -37,9 +37,15 @@ class FediversoController extends Controller
             $user=User::where('slug',$slug)->first();
             if (!$user)
             {
-
+                return "404";
             }
-            return "No implementado";
+            else
+            {
+                $name[0]=$slug;
+                // host de la app
+                $name[1]=$request->getHost();
+                $slug=$name[0].'@'.$name[1];
+            }
         }
         if (count($name)==2)
         {
@@ -51,8 +57,7 @@ class FediversoController extends Controller
             }
             return view('fediverso.profile', ['actor' => $actor]);
         }
-        // error 404
-        return "No implementado 404";
+        return response()->json('Usuario no encontrado', 404);
     }
 
     /**

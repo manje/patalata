@@ -13,6 +13,7 @@ class Timeline extends Model
         'user_id',
         'team_id',
         'activity',
+        'actor',
     ];
 
     // Relación con el modelo User

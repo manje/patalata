@@ -58,6 +58,7 @@ class Post extends Model
             if (empty($post->slug)) {
                 $t=date("Y")."_".$post->name;
                 $slug=Str::slug($t);
+                if (strlen($slug)>30) $slug=substr($slug,0,30);
                 if (Post::where('slug', $slug)->count()>0) 
                 {
                     while (Post::where('slug', $slug)->count()>0)
