@@ -228,6 +228,7 @@ class ActivityPub
         if (isset($outbox['first']))
         {
             $outbox=self::GetUrlFirmado($user,$outbox['first']);
+            if (!(isset($outbox['orderedItems']))) Log::info('489974857349'.print_r($outbox,1));
             $list=$outbox['orderedItems'];
             while (isset($outbox['next']))
             {
