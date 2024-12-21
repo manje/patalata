@@ -64,6 +64,18 @@ Un apartado permitirá a cualquier ciudadano realizar una denuncia púbica, ya s
 
 Todos los contenidos de la plataforma tendrá la opción de recoger comentarios de los usuarios de la plataforma.
 
+# Fediverso
+
+Todso los activistas, equipos y las campañas, tendrán un usuario en el fediverso, podrán ser seguidos por ejemplo desde cualquier instancia de mastodón, De esta manera los contenidos, artículos, denuncias, podcasts, eventos, etc se distribuirán a través del fediverso. Estos contenidos por lo tanto podrán ser comentados tanto por usuarios registrados en la plataforma como por cualquier usuario del fediverso.
+
+Las campañas tendrán también un perfil público en el fediverso que impularán a su timeline (retuits) todos los contenidos asociados a una campaña.
+
+Los usuarios y equipos podrán desde esta plataforma participar de fediverso, siguiendo otras cuentas de la propia plataforma o de otras instancias del fediverso, contando con un timeline sin algoritmos.
+
+Los usuarios cuando accedan a la agenda, verán los eventos de su localidad y también los eventos creados por cualquier usuario del fediverso.
+
+En la sección de podcast, donde el usuario puede subscribirse a un podcast para que se le notifique de nuevos episodios, podrá también subscribirse a podcasts de instancias de castopod, y desde instancias de mastodon se podrán seguir los podcasts de esta plataforma.
+
 ## ¿Se puede publicar un comentario a nombre de un equipo?
 
 ### Pros:
