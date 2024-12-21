@@ -20,11 +20,19 @@ class Activity extends Component
     public $origen=false;
     public $loading=true;
     public $diferido=true;
+    public $listrespuestas=[];
+    public $respuestas=false;
+    public $msgrespondiendo=true;
 
-    public function mount($activity,$diferido=true)
+
+    public function mount($activity,$diferido=true,$msgrespondiendo=true)
     {
+        if ($msgrespondiendo==false) $this->msgrespondiendo=false;
         $this->user = Auth::user();
-        $this->activity = $activity;
+        if (is_string($activity)) 
+            $this->activity = ActivityPub::GetObjectByUrl($this->user,$activity);
+        else
+            $this->activity = $activity;
         $this->diferido=$diferido;
         if (!$diferido) $this->cargar();
     }
@@ -58,10 +66,13 @@ class Activity extends Component
                 $this->activity['attributedTo']=ActivityPub::GetObjectByUrl($this->user , $this->activity['attributedTo']);
                 if (!(isset($this->activity['attributedTo']['preferredUsername']))) $this->activity['error']='Error en attributedTo';
             }
-        if (isset($this->activity['replies']))  $this->activity['replies']=ActivityPub::GetColeccion($this->user , $this->activity['replies'],true);
-        if (isset($this->activity['likes']))  $this->activity['likes']=ActivityPub::GetColeccion($this->user , $this->activity['likes'],true);
-        if (isset($this->activity['shares']))  $this->activity['shares']=ActivityPub::GetColeccion($this->user , $this->activity['shares'],true);
-        if (isset($this->activity['inReplyTo']))  
+        $this->activity['num_replies']='?';
+        $this->activity['num_likes']='?';
+        $this->activity['num_shares']='?';
+        if (isset($this->activity['replies']))  $this->activity['num_replies']=(int)ActivityPub::GetColeccion($this->user , $this->activity['replies'],true);
+        if (isset($this->activity['likes']))  $this->activity['num_likes']=(int)ActivityPub::GetColeccion($this->user , $this->activity['likes'],true);
+        if (isset($this->activity['shares']))  $this->activity['num_shares']=(int)ActivityPub::GetColeccion($this->user , $this->activity['shares'],true);
+        if (isset($this->activity['inReplyTo']))
         {
             if (is_string($this->activity['inReplyTo']))
                 $this->activity['isreply']=ActivityPub::GetObjectByUrl($this->user , $this->activity['inReplyTo']);
@@ -85,16 +96,30 @@ class Activity extends Component
                 unset($this->activity['isreply']);
             }
         }
-
+        if (isset($this->activity['replies']))
+        {
+            $x=ActivityPub::GetColeccion($this->user , $this->activity['replies'],true);
+        }
         if (isset($this->activity['content']))
             $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
-        #if ($this->activity['type']=="Question")            Log::info(print_r($this->activity,1));
     }
 
 
     public function verorigen()
     {
         $this->origen=true;
+    }
+    
+    public function verrespuestas()
+    {
+        if ($this->respuestas)
+            $this->respuestas=false;
+        else
+        {
+            $this->listrespuestas=ActivityPub::GetColeccion($this->user , $this->activity['replies']);
+            Log::info('list respuestas '.print_r($this->listrespuestas,1));
+            $this->respuestas=true;
+        }
     }
 
     public function render()
@@ -105,6 +130,8 @@ class Activity extends Component
             'activity' => $this->activity,
             'origen' => $this->origen,
             'loading' => $this->loading,
+            'listrespuestas'=>$this->listrespuestas,
+            'msgrespondiendo'=>$this->msgrespondiendo
         ]);
     }
 }

@@ -10,7 +10,7 @@ use App\Models\Timeline as TL;
 
 class Timeline extends Component
 {
-    public $timeline=null;
+    public $timeline=[];
     public $user=null;
     public $actor=null;
     public $nuevas=0;

@@ -1,5 +1,5 @@
 <div class="
-@if ($activity['type']  != 'Announce')
+listrespuestas=@if ($activity['type']  != 'Announce')
 border-b
 @endif
 p-2"
@@ -102,7 +102,6 @@ wire:init="load" >
 
             @case('Question')
             <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
-
                 <div class="avatar">
                     <div class="w-12 rounded-full">
                         @if (isset($activity['attributedTo']['icon']['url']))
@@ -168,19 +167,19 @@ wire:init="load" >
                 @if (isset($activity['isreply']))
                     @if ($origen)
                             <livewire:fediverso.activity :activity="$activity['isreply']"   />
-                    @else                   
-                    <div class="">
-                        <div class="text-gray-500 font-bold">
-                        <a class="cursor-pointer" wire:click="verorigen()"
-                        >Respondiendo a {{ $activity['autororigen'] }}</a>
-                        </div>
-                    </div>
+                    @else
+                        @if ($msgrespondiendo)                   
+                            <div class="">
+                                <div class="text-gray-500 font-bold">
+                                <a class="cursor-pointer" wire:click="verorigen()"
+                                >Respondiendo a {{ $activity['autororigen'] }}</a>
+                                </div>
+                            </div>
+                        @endif
                     @endif
                     
                 @endif
-                    <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
-
-
+                <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
                     <div class="avatar">
                         <div class="w-12 rounded-full">
                             @if (isset($activity['attributedTo']['icon']['url']))
@@ -209,33 +208,34 @@ wire:init="load" >
                         </p>
                     </div>
                 </div>
-              @break
-          @default
-              Tipo no implementado: {{ $activity['type'] }}
+            @break
+            @default
+                Tipo no implementado: {{ $activity['type'] }}
+            
         @endswitch
         @if ($activity['type']!='Announce')
-
-
             @if (isset($activity['attachment']))
                 @foreach ($activity['attachment'] as $media)
                     <div class="mt-2">
-                        @switch ($media['mediaType'])
-                            @case ('image/jpeg')
-                            @case ('image/png')
-                            @case ('image/gif')
-                            @case ('image/svg+xml')
-                            @case ('image/webp')
-                                <img src="{{ $media['url'] }}" class="mt-2 w-full border border-gray-300">
-                            @break
-                            @case ('video/mp4')
-                            @case ('video/ogg')
-                            @case ('video/webm')
-                                <video src="{{ $media['url'] }}" class="mt-2 w-full border border-gray-300"></video>
-                            @break
-                            @default
-                            {{ $media['mediaType']}}
-                            {{ print_r($media)}}
-                        @endswitch
+                        @if (isset($media['mediaType']))
+                            @switch ($media['mediaType'])
+                                @case ('image/jpeg')
+                                @case ('image/png')
+                                @case ('image/gif')
+                                @case ('image/svg+xml')
+                                @case ('image/webp')
+                                    <img src="{{ $media['url'] }}" class="mt-2 w-full border border-gray-300">
+                                @break
+                                @case ('video/mp4')
+                                @case ('video/ogg')
+                                @case ('video/webm')
+                                    <video src="{{ $media['url'] }}" class="mt-2 w-full border border-gray-300"></video>
+                                @break
+                                @default
+                                {{ $media['mediaType']}}
+                                {{ print_r($media)}}
+                            @endswitch
+                        @endif
                     </div>
                 @endforeach
             @endif
@@ -244,34 +244,41 @@ wire:init="load" >
             <div class="mt-2 flex space-x-4 text-gray-500">
                 <button class="flex items-center space-x-1">
                     <i class="fa-regular fa-heart mr-2"></i>
-                    @if (isset($activity['likes']))
-                    @if ($activity['likes']!=0)
-                        {{ $activity['likes']}}
+                    @if (isset($activity['num_likes']))
+                    @if ($activity['num_likes']!=0)
+                        {{ $activity['num_likes']}}
                     @endif
                     @endif
                     <span>Me gusta</span>
                 </button>
                 <button class="flex items-center space-x-1">
                 <i class="fa-solid fa-retweet mr-2"></i>
-                    @if (isset($activity['shares']))
-                    @if ($activity['shares']!=0)
-                        {{ $activity['shares']}}
+                    @if (isset($activity['num_shares']))
+                    @if ($activity['num_shares']!=0)
+                        {{ $activity['num_shares']}}
                     @endif
                     @endif
                     <span>Retwittear</span>
                 </button>
-                <button class="flex items-center space-x-1">
-                    <i class="fa-solid fa-comment mr-2"></i>
-                    @if (isset($activity['replies']))
-                    @if ($activity['replies']!=0)
-                        {{ $activity['replies']}}
-                    @endif
-                    @endif
+                <button class="flex items-center space-x-1"  wire:click="verrespuestas()">
+                    <i class="fa-solid fa-reply mr-2"></i>
+                        {{ $activity['num_replies']}}
                     <span>Respuestas</span>
                 </button>
             </div>
+             
+
+            <span wire:target="verrespuestas" wire:loading.delay class="loading loading-ring loading-md"></span>
+
+            @if ($respuestas)
+            <div class="ml-14">
+                @foreach ($listrespuestas as $res)
+                    <livewire:fediverso.activity :activity="$res" :diferido="true" :msgrespondiendo="false"  />  
+                @endforeach
+            </div>
+            @endif
         @endif
-      @endif
+    @endif
 @endif
 </div>
 

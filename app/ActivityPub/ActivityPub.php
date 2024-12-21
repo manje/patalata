@@ -84,7 +84,7 @@ class ActivityPub
         $d=explode("/",$url)[2];
         $idca="$d ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
-        if ($num++>100) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
+        if ($num++>110) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
         $key=$user->id."-o-".$url;
         if ($out=Cache::get($key))
             return $out;
@@ -93,11 +93,11 @@ class ActivityPub
         if (!(is_array($out)))
         {
             $out=['error'=>$out];
-            Cache::put($key,$out,600);
+            Cache::put($key,$out,120);
         }
         if (isset($out['error']))
         {
-            Cache::put($key,$out,600);
+            Cache::put($key,$out,120);
         }
         else
             Cache::put($key,$out,3600*4);
@@ -247,23 +247,16 @@ class ActivityPub
             $col=self::GetObjectByUrl($user,$idlist);
         else
             $col=$idlist;
-        if ($solocount)
-            if (isset($col['totalItems'])) return $col['totalItems'];
+        if (array_is_list($col)) 
+        {
+            if ($solocount) return count($col);
+            return $col;
+        }
+        if ($solocount) if (isset($col['totalItems'])) return $col['totalItems'];
         if ((isset($col['error'])) && ($solocount)) return "?";
         if (isset($col['error'])) return $col;
-        if (!isset($col['type']))
-            $items=$col;
-        else
-            $items=[];
-        if ( 
-            (isset($col['orderedItems'])) 
-            || 
-            (
-            (  isset($col['type']) &&  ($col['type']=='OrderedCollection')) 
-            )
-           )
+        if  ((isset($col['type'])) &&  ($col['type']=='Collection')) 
         {
-            $items=[];
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
                 $col=self::GetObjectByUrl($user,$col['first']);
@@ -272,42 +265,40 @@ class ActivityPub
                     if ($solocount) return "?";
                     return $col;
                 }
-            }
-            
-            if (isset($col['orderedItems']))
-                $items=$col['orderedItems'];
-            if (isset($col['first'])) $col['next']=$col['first'];
-            $co=0;
-            while (isset($col['next']))
-            {
-                $col=self::GetObjectByUrl($user,$col['next']);
-                if (isset($col['error']))
+                if (isset($col['items']))
+                    $items=$col['items'];
+                else
+                    $items=[];
+                while (isset($col['next']))
                 {
-                    if ($solocount) return "?";
-                    return $col;
+                    $col=self::GetObjectByUrl($user,$col['next']);
+                    if (isset($col['error']))
+                    {
+                        if ($solocount) return "?";
+                        return $col;
+                    }
+                    if (isset($col['items']))
+                        foreach ($col['items'] as $i)
+                        {
+                            if (is_string($i))
+                                $items[]=$i;
+                            else
+                                $items[]=$i['id'];
+                        }
                 }
-                if (isset($col['orderedItems']))
-                    $items=array_merge($items,$col['orderedItems']);
+                if ($solocount) return count($items);
+                return $items;
             }
-        }
-        if (isset($items['error'])) return $items;
-        if ($items===null)
-        {
-            if ($solocount)
-                return "?";
-            else
-                return false;
-        }
-        if (count($items)==0)
-        {
-
+            Log::error('1459749543');
+            return false;
         }
         else
-            Cache::Put($idlist,$items,3600*24*365);
-        if ($solocount)
-            return count($items);
-        else
-            return $items;
+        {
+            Log::info($idlist);
+            Log::info(print_R($col,1));
+            Log::error('3459749543');
+            return false;
+        }
     }
 
 
