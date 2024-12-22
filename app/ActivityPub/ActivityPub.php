@@ -8,6 +8,7 @@ use App\Models\Post;
 use App\Models\Apfollower;
 use App\Models\Apfollowing;
 use App\Models\Timeline;
+use App\Models\Like;
 
 use Illuminate\Support\Facades\Cache;
 
@@ -342,6 +343,10 @@ class ActivityPub
                     case 'Announce':
                         Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->where('user_id', $user->id)->delete();
                        return response()->json(['message' => 'Undo request received'],202);
+                    case 'Like':
+                        Log::info(print_r($activity,1));
+                        Like::where('actor',$activity['actor'])->where('object',$activity["object"]["object"])->delete();
+                        return response()->json(['message' => 'Undo request received'],202);
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
                         return response()->json(['message' => 'Unknow activity '.$activity['type']],202);
@@ -402,7 +407,8 @@ class ActivityPub
             case 'Like':
             {
                 Log::info('Petición de Like '.print_r($activity,1));
-                return response()->json(['message' => 'No implementado'],501);
+                Like::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
+                return response()->json(['message' => 'OK'],200);
             }
             case 'Delete':
             {
