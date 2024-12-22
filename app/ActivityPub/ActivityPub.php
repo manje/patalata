@@ -9,6 +9,7 @@ use App\Models\Apfollower;
 use App\Models\Apfollowing;
 use App\Models\Timeline;
 use App\Models\Like;
+use App\Models\Announce;
 
 use Illuminate\Support\Facades\Cache;
 
@@ -307,6 +308,7 @@ class ActivityPub
     static function InBox($user,$activity)
     {
         // Aquí llega la petición con la firma verificada
+        Log::info(print_r($activity,1));
         if (isset($activity["object"]["attributedTo"]))
             if ( $activity["object"]["attributedTo"] != $activity['actor'] )
             {
@@ -342,9 +344,9 @@ class ActivityPub
                         return response()->json(['message' => 'Follow request received'],202);
                     case 'Announce':
                         Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->where('user_id', $user->id)->delete();
-                       return response()->json(['message' => 'Undo request received'],202);
+                        Announce::where('actor',$activity['actor'])->where('object',$activity['object']['object'])->delete();
+                        return response()->json(['message' => 'Undo request received'],202);
                     case 'Like':
-                        Log::info(print_r($activity,1));
                         Like::where('actor',$activity['actor'])->where('object',$activity["object"]["object"])->delete();
                         return response()->json(['message' => 'Undo request received'],202);
                     default:
@@ -395,13 +397,25 @@ class ActivityPub
             }
             case 'Announce':
             {
-                $line= new Timeline();
-                if ($user instanceof User) $line->user_id=$user->id;
-                if ($user instanceof Team) $line->team_id=$user->id;
-                $line->activity=$activity['id'];
-                $line->actor_id=$activity['actor'];
-                Cache::put($activity['id'],$activity,3600*8);
-                $line->save();
+                $seguido=Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->first();
+                if ($seguido)
+                {
+                    $line= new Timeline();
+                    if ($user instanceof User) $line->user_id=$user->id;
+                    if ($user instanceof Team) $line->team_id=$user->id;
+                    $line->activity=$activity['id'];
+                    $line->actor_id=$activity['actor'];
+                    Cache::put($activity['id'],$activity,3600*8);
+                    $line->save();
+                }
+                if (is_array($activity['object']))
+                    $id=$activity['object']['id'];
+                else
+                    $id=$activity['object'];    
+                if (self::IsLocal($id))
+                {
+                    Announce::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
+                }
                 return response()->json(['message' => 'Accept'],202);
             }
             case 'Like':
@@ -416,6 +430,8 @@ class ActivityPub
                 {
                     Cache::put($activity['object'],['error'=>'Deleted'],3600*24*30);
                     Cache::put($user->id.'-'.$activity['object'],['error'=>'Deleted'],3600*24*30);
+                    Log::info('w948574'.print_r($activity,1));
+                    TimeLine::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
                     return response()->json(['message' => 'Accepted'],202);
                 }
                 if (isset($activity['object']['id']))
@@ -539,6 +555,14 @@ class ActivityPub
             $link->setAttribute('target', '_blank');
         }
         return $dom->saveHTML($dom->documentElement);    
+    }
+
+    static function IsLocal($url)
+    {
+        if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
+            return true;
+        else
+            return false;
     }
 
 
