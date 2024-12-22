@@ -124,6 +124,7 @@ class Activity extends Component
 
     public function render()
     {
+        #Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";
         return view('livewire.fediverso.activity', [

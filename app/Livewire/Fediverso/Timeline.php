@@ -110,7 +110,7 @@ class Timeline extends Component
         if ($this->user)
         {
             $this->primero=false;
-            $list=TL::where('user_id',$this->user->id)->orderBy('created_at','desc')->take($this->numactividades)->get();
+            $list=TL::where('user_id',$this->user->id)->orderBy('id','desc')->take($this->numactividades)->get();
             foreach ($list as $item)
             {
                 if ($this->primero===false) $this->primero=$item;
