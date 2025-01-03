@@ -86,7 +86,7 @@ class ActivityPub
         $d=explode("/",$url)[2];
         $idca="$d ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
-        if ($num++>110) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
+        if ($num++>100) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
         $key=$user->id."-o-".$url;
         if ($out=Cache::get($key))
             return $out;
@@ -260,6 +260,7 @@ class ActivityPub
         if (isset($col['error'])) return $col;
         if  ((isset($col['type'])) &&  ($col['type']=='Collection')) 
         {
+
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
                 $col=self::GetObjectByUrl($user,$col['first']);
@@ -288,6 +289,10 @@ class ActivityPub
                             else
                                 $items[]=$i['id'];
                         }
+                    if ($solocount)
+                    if (count($items)>10000) 
+                      return " > 10k ";
+                    
                 }
                 if ($solocount) return count($items);
                 return $items;
@@ -308,7 +313,6 @@ class ActivityPub
     static function InBox($user,$activity)
     {
         // Aquí llega la petición con la firma verificada
-        Log::info(print_r($activity,1));
         if (isset($activity["object"]["attributedTo"]))
             if ( $activity["object"]["attributedTo"] != $activity['actor'] )
             {
@@ -502,6 +506,9 @@ class ActivityPub
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
+
+            curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+
             $date = new DateTime('UTC');
             $headers = [
                 '(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),

@@ -1,0 +1,12 @@
+
+ActibityPub
+  Qué Campañas y Equipos tengan un perfil en el fediverso
+  GetActor que se genere con el trait
+  Responder
+  Notas privadas
+  Recibir respuestas
+  Realizar likes y RTs
+  exportar likes, rts, respuests, followers y followings, implementar colecciones
+  crear una tabla outbox para los actores, en vez de tener que ver todos sus contenidos en la bd
+OpenGraph
+Campañas
