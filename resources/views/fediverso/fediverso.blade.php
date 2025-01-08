@@ -26,6 +26,7 @@
             @php
             
             $list=[
+                'vamonosjuntas@masto.es',
                 'lavillanavk@mastodon.social','lacasainvisible@xarxa.cloud',
                 'nolesdescasito@mstdn.social','ElSaltoDiario@mastodon.social','eldiarioes@mastodon.world','ctxt@mastodon.world',
                 'infusionideologica@paquita.masto.host','espanabizarra@mastodon.social','PixelRobot@paquita.masto.host',
