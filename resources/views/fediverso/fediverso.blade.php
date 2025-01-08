@@ -20,10 +20,22 @@
             varios enlaces a distintos perfiles:
             <br>
             <br>
-            <a href='/@lacasainvisible@xarxa.cloud'>@lacasainvisible@xarxa.cloud</a><br>
-            <a href='/@infusionideologica@paquita.masto.host'>@infusionideologica@paquita.masto.host</a><br>
-            <a href='/@ElSaltoDiario@mastodon.social'>@ElSaltoDiario@mastodon.social</a><br>
-            <a href='/@lavillanavk@mastodon.social'>@lavillanavk@mastodon.social</a><br>
+
+
+
+            @php
+            
+            $list=[
+                'lavillanavk@mastodon.social','lacasainvisible@xarxa.cloud',
+                'nolesdescasito@mstdn.social','ElSaltoDiario@mastodon.social','eldiarioes@mastodon.world','ctxt@mastodon.world',
+                'infusionideologica@paquita.masto.host','espanabizarra@mastodon.social','PixelRobot@paquita.masto.host',
+                'teclista@mas.to','paquita@paquita.masto.host','velvetmolotov@masto.es','euklidiadas@masto.es'
+            ];
+            foreach ($list as $p) echo "<a href='/@$p'>@$p</a> ";
+
+            @endphp
+
+
         </p> 
     </div>
     <div id="timeline-container" class="flex-1 overflow-y-scroll">
