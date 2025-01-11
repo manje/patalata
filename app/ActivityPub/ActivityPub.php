@@ -507,7 +507,7 @@ class ActivityPub
             curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
 
-            curl_setopt($curl, CURLOPT_TIMEOUT, 10);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
 
             $date = new DateTime('UTC');
             $headers = [
