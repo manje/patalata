@@ -111,6 +111,7 @@ class Timeline extends Component
         {
             $this->primero=false;
             $list=TL::where('user_id',$this->user->id)->orderBy('id','desc')->take($this->numactividades)->get();
+            $list=[];
             foreach ($list as $item)
             {
                 if ($this->primero===false) $this->primero=$item;
@@ -121,7 +122,8 @@ class Timeline extends Component
                     $this->timeline[$idtl]=$a;
                 }
             }
-            $this->ultimo=$item->id;
+            if (isset($item))
+                $this->ultimo=$item->id;
         }
     }
     public function render()
