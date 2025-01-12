@@ -297,10 +297,10 @@ class ActivityPub
             case 'Follow':
                 $url=$activity['actor'];
                 $actor = self::GetActorByUrl($user,$url);
-                Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
+                Apfollower::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
                 $apFollow = new Apfollower();
-                $apFollow->actor_id = $activity['actor'];
-                $apFollow->user_id = $user->id;
+                $apFollow->object = $activity['actor'];
+                $apFollow->actor = $user->GetActivity()['id'];
                 $apFollow->save();
                 $activity=[
                     '@context' => 'https://www.w3.org/ns/activitystreams',
@@ -318,7 +318,7 @@ class ActivityPub
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Apfollower::where('actor_id', $activity['actor'])->where('user_id', $user->id)->delete();
+                        Apfollower::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Follow request received'],202);
                     case 'Announce':
                         Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->where('user_id', $user->id)->delete();
@@ -363,7 +363,8 @@ class ActivityPub
                             if ($user instanceof Team) $line->team_id=$user->id;
                             $line->actor_id=$activity['actor'];
                             $line->activity=$activity["object"]['id'];
-                            Cache::put($activity["object"]['id'],$activity["object"],3600*8);
+                            if (!(is_string[$activity['object']]))
+                                Cache::put($activity["object"]['id'],$activity["object"],3600*8);
                             $line->save();
                             return response()->json(['message' => 'Accept'],202);
                         default:

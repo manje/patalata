@@ -10,7 +10,7 @@ use App\Models\Timeline as TL;
 
 class Timeline extends Component
 {
-    public $timeline=[];
+    public $timeline=false;
     public $user=null;
     public $actor=null;
     public $nuevas=0;
@@ -111,17 +111,19 @@ class Timeline extends Component
         {
             $this->primero=false;
             $list=TL::where('user_id',$this->user->id)->orderBy('id','desc')->take($this->numactividades)->get();
-            $list=[];
-            foreach ($list as $item)
-            {
-                if ($this->primero===false) $this->primero=$item;
-                $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
-                if (isset($a['id']))
+            if (count($list)==0)
+                $this->timeline=[];
+            else
+                foreach ($list as $item)
                 {
-                    $idtl=$item->id;
-                    $this->timeline[$idtl]=$a;
+                    if ($this->primero===false) $this->primero=$item;
+                    $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                    if (isset($a['id']))
+                    {
+                        $idtl=$item->id;
+                        $this->timeline[$idtl]=$a;
+                    }
                 }
-            }
             if (isset($item))
                 $this->ultimo=$item->id;
         }

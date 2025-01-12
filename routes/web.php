@@ -77,12 +77,8 @@ Route::get('/ap/users/{slug}/followers', [ActivityPubUserController::class, 'fol
 
 Use App\Http\Controllers\FediversoController;
 
-
 Route::get('/fedi', [FediversoController::class, 'index'])->name('fediverso.index'); // Formulario para crear un nuevo post
-Route::get('/@{slug}', [FediversoController::class, 'profile'])->where('slug', '.*');
-
-
-
+Route::get('/@{slug}', [FediversoController::class, 'profile'])->where('slug', '.*')->name('fediverso.profile');
 
 Route::get('/.well-known/webfinger', [ActivityPubUserController::class, 'webFinger'])
     ->name('activitypub.webfinger');

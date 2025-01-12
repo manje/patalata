@@ -37,7 +37,7 @@ class DistribuirFedi implements ShouldQueue
         // recorro los followers y creo por cada uno un trabajo para enviarlo
         foreach ($followers as $follower)
         {
-            $data=['modelo'=> $this->data, 'actor'=> $user->GetActivity()['id'], 'follower' => $follower]->object;
+            $data=['modelo'=> $this->data, 'actor'=> $user->GetActivity()['id'], 'follower' => $follower->object , 'user' => $user];
             EnviarFedi::dispatch($data);
         }
         Log::info(count($followers).' envidados.');

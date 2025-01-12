@@ -32,21 +32,18 @@ class EnviarFedi implements ShouldQueue
     public function handle(): void
     {   
         $activity=$this->data['modelo']->GetActivity();
-        Log::info('actor origen: '.$this->data['actor']);
+        Log::info("Enviar Fedi $activity[id]");
         $json = [
           '@context' => 'https://www.w3.org/ns/activitystreams',
           'id' => $activity['id'],
           'type' => 'Create',
-          'actor' =>  route('activitypub.actor', ['slug' => $user->slug]),
+          'actor' => $this->data['actor'],
           'to' => ['https://www.w3.org/ns/activitystreams#Public'],
           'object' => $activity
         ];
         $json=json_encode($json);
-        Log::info('json: '.$json);
-        Log::info('inbox: '.$this->data['follower']);
-        $actor=ActivityPub::GetActorByUrl($user,$this->data['follower']);
-        Log::info('actor inbox: '.print_R($actor['inbox'],1));
-        $headers = HTTPSignature::sign($user, $json, $actor['inbox']);
+        $actor=ActivityPub::GetActorByUrl($this->data['user'],$this->data['follower']);
+        $headers = HTTPSignature::sign($this->data['user'], $json, $actor['inbox']);
         $ch = curl_init($actor['inbox']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -54,12 +51,15 @@ class EnviarFedi implements ShouldQueue
         curl_setopt($ch, CURLOPT_HEADER, true);
         $response = curl_exec($ch);
         $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        Log::info('Inbox response: '.$codigo);
+        $res=curl_getinfo($ch);
         $response=json_decode($response, true); 
+        $headers=curl_getinfo($ch, CURLINFO_HEADER_OUT);
+        Log::info('enviar actividad '.$activity['id'].' a '.$this->data['follower']);
+        Log::info('Inbox response: '.$codigo);
         if (isset($response->error))
                 throw new \Exception('Error al distribuir la fedi');
-        if ($codigo!=202)
-                throw new \Exception('Error al distribuir la fedi, código $codigo, respuesta: '.print_r($response,1));
+        if (!in_array($codigo,[200,201,202]))
+                throw new \Exception("Error al distribuir la fedi, código $codigo, respuesta: ".print_r($headers,1));
     
     }
 }

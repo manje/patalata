@@ -22,7 +22,8 @@ trait ModelFedi
     public static function bootModelFedi()
     {
         static::created(function ($model) {
-            if ($this->APtype!='Person')
+            Log::info("tipo: ".$model->APtype." ".$model->slug);
+            if ($model->APtype!='Person')
                 $model->distribute();
         });
     }
@@ -37,8 +38,10 @@ trait ModelFedi
             $activity = [
                 '@context' => 'https://www.w3.org/ns/activitystreams',
                 'id' => route('activitypub.actor', ['slug' => $this->slug]),
+                'url' => route('fediverso.profile', ['slug' => $this->slug]),
                 'type' => 'Person',
                 'preferredUsername' => $this->slug,
+                'published' => $this->created_at->toIso8601String(),
                 'name' => $this->name,
                 'following' => route('activitypub.following', ['slug' => $this->slug]),
                 'followers' => route('activitypub.followers', ['slug' => $this->slug]),
