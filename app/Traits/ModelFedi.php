@@ -4,6 +4,8 @@ namespace App\Traits;
 
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 use App\Jobs\DistribuirFedi;
 
@@ -125,6 +127,44 @@ trait ModelFedi
         Queue::push(new DistribuirFedi($this));
     }
 
+    public function Collection($listado,$url): JsonResponse
+    {
+        // Compruebo si hay parámetro page
+        if (!(Request::has('page'))) {
+            $total=$listado->count();
+            $list = [
+                '@context' => 'https://www.w3.org/ns/activitystreams',
+                'id' => $url,
+                'type' => 'OrderedCollection',
+                'totalItems' => $total,
+                'first' => $url.'?page=1',
+            ];
+            return response()->json($list, 200, ['Content-Type' => 'application/activity+json']);
+        }
+        // Recuperar seguidores paginados
+        $res = $listado->orderBy('id','desc')
+            ->paginate(3); // Cambia el número según tus necesidades (ej. 20 seguidores por página)
+
+        $list = [];
+        foreach ($res as $item) {
+            $list[] = $item->object;
+        }
+
+        // Paginated response
+        $col = [
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id' => $url,
+            'type' => 'Collection',
+            'totalItems' => $res->total(),
+            'orderedItems' => $list,
+            'last' => $res->url($res->lastPage()), // URL para la última página
+        ];
+        if ($res->hasMorePages())
+            $col['next'] = $res->nextPageUrl(); // URL para la página siguiente
+        if (!$res->onFirstPage())
+            $col['prev'] = $res->previousPageUrl(); // URL para la página anterior
+        return response()->json($col, 200, ['Content-Type' => 'application/activity+json']);
+    }
 
 
 }

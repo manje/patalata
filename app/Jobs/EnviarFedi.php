@@ -32,9 +32,7 @@ class EnviarFedi implements ShouldQueue
     public function handle(): void
     {   
         $activity=$this->data['modelo']->GetActivity();
-        // estoy hay que cambiarlo que ahora mando el user
-        $user = User::find($this->data['follower']->user_id);
-        Log::info('actor origen: '.route('activitypub.actor', ['slug' => $user->slug]));
+        Log::info('actor origen: '.$this->data['actor']);
         $json = [
           '@context' => 'https://www.w3.org/ns/activitystreams',
           'id' => $activity['id'],
@@ -44,16 +42,12 @@ class EnviarFedi implements ShouldQueue
           'object' => $activity
         ];
         $json=json_encode($json);
-        Log::info('user: '.$user->slug);
         Log::info('json: '.$json);
-        Log::info('inbox: '.$this->data['follower']->actor_id);
-        Log::info('id de follower: '.$this->data['follower']->id);
-        $actor=ActivityPub::GetActorByUrl($user,$this->data['follower']->actor_id);
+        Log::info('inbox: '.$this->data['follower']);
+        $actor=ActivityPub::GetActorByUrl($user,$this->data['follower']);
         Log::info('actor inbox: '.print_R($actor['inbox'],1));
         $headers = HTTPSignature::sign($user, $json, $actor['inbox']);
         $ch = curl_init($actor['inbox']);
-        
-        
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);

@@ -18,10 +18,14 @@ use Illuminate\Support\Facades\Http;
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
 use Request as Rq;
+use App\Traits\ModelFedi;
 
 
 class ActivityPubUserController extends Controller
 {
+
+    use ModelFedi;
+
     public function getActor($slug): JsonResponse
     {
         // Busca al usuario por su slug
@@ -43,14 +47,13 @@ class ActivityPubUserController extends Controller
         return ActivityPub::InBox($user,$activity);
     }
 
-    public function following($slug): JsonResponse
+    public function followingOLD($slug): JsonResponse
     {
-        // Busca al usuario por su slug
         $user = User::where('slug', $slug)->firstOrFail();
-        $followers = Apfollower::where('user_id', $user->id)->get();
+        $followers = Apfollower::where('actor', $user->GetActivity()['id'])->get();
         $list=[];
         foreach ($followers as $follower)
-            $list[]=$follower->actor_id;
+            $list[]=$follower->object;
         $following = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id' => route('activitypub.following', ['slug' => $user->slug]),
@@ -61,7 +64,16 @@ class ActivityPubUserController extends Controller
         return response()->json($following, 200, ['Content-Type' => 'application/activity+json']);
     }
 
-    
+
+    public function following($slug): JsonResponse
+    {
+        $user = User::where('slug', $slug)->firstOrFail();
+        $listado=Apfollower::where('actor', $user->GetActivity()['id']);
+        $url=route('activitypub.following', ['slug' => $user->slug]);
+        return $this->Collection($listado,$url);
+    }
+
+
     private function verifySignature($user,$activity,$path): bool
     {
         if(!Rq::header('signature')) {

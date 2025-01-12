@@ -33,11 +33,11 @@ class DistribuirFedi implements ShouldQueue
         Log::info('DistribuirFedi: '.$this->data->id);
         $user=User::find($this->data['user_id']);
         // busco sus followers
-        $followers=Apfollower::where('user_id', $user->id)->get();
+        $followers=Apfollower::where('actor', $user->GetActivity()['id'])->get();
         // recorro los followers y creo por cada uno un trabajo para enviarlo
         foreach ($followers as $follower)
         {
-            $data=['modelo'=> $this->data, 'follower' => $follower];
+            $data=['modelo'=> $this->data, 'actor'=> $user->GetActivity()['id'], 'follower' => $follower]->object;
             EnviarFedi::dispatch($data);
         }
         Log::info(count($followers).' envidados.');
