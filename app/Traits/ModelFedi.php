@@ -20,7 +20,8 @@ trait ModelFedi
     public static function bootModelFedi()
     {
         static::created(function ($model) {
-            $model->distribute();
+            if ($this->APtype!='Person')
+                $model->distribute();
         });
     }
 
