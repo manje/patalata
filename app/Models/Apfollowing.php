@@ -17,8 +17,8 @@ class Apfollowing extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'actor_id',
-        'user_id',
+        'object',
+        'actor',
         'acept',
     ];
 

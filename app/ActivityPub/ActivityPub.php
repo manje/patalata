@@ -130,8 +130,8 @@ class ActivityPub
         if ($actor['id']==route('activitypub.actor', ['slug' => $user->slug]))
             return false;
         $Follow = new Apfollowing();
-        $Follow->actor_id = $actor['id'];
-        $Follow->user_id = $user->id;
+        $Follow->object = $actor['id'];
+        $Follow->actor = $user->GetActivity()['id'];
         $Follow->save();
         $id=$Follow->id;
         $activity=[
@@ -149,7 +149,7 @@ class ActivityPub
     
     static function dejarDeSeguir($user,$actor)
     {
-        $Follow = Apfollowing::where('actor_id', $actor['id'])->where('user_id', $user->id)->first();
+        $Follow = Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->first();
         if ($Follow)
         {
             $id=$Follow->id;
@@ -168,7 +168,7 @@ class ActivityPub
             $activity=json_encode($activity);
             $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
             Log::info("hay que controlar aqui codigo respuesta $response");
-            Apfollowing::where('actor_id', $actor['id'])->where('user_id', $user->id)->delete();
+            Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->delete();
             return true;
         }
         return false;
@@ -177,7 +177,7 @@ class ActivityPub
     static function siguiendo($user,$actor)
     {
         $id=$actor['id'];
-        $Follow = Apfollowing::where('actor_id', $id)->where('user_id', $user->id)->first();
+        $Follow = Apfollowing::where('object', $id)->where('actor', $user->GetActivity()['id'])->first();
         if ($Follow)
             return true;
         return false;
@@ -186,7 +186,7 @@ class ActivityPub
     static function tesigue($user,$actor)
     {
         $id=$actor['id'];
-        $Follow = Apfollower::where('actor_id', $id)->where('user_id', $user->id)->first();
+        $Follow = Apfollower::where('object', $id)->where('actor', $user->GetActivity()['id'])->first();
         if ($Follow)
             return true;
         return false;
@@ -336,7 +336,7 @@ class ActivityPub
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->update(['accept' => true]);
+                        Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->update(['accept' => true]);
                         return response()->json(['message' => 'Accept'],202);
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
@@ -346,7 +346,7 @@ class ActivityPub
             case 'Create':
             {
                 // Compruebo si el actor está entre los seguidos del usuario
-                $seguido=Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->first();
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
                 if (is_null($seguido))
                     Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id);
                 else
@@ -375,7 +375,7 @@ class ActivityPub
             }
             case 'Announce':
             {
-                $seguido=Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->first();
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
                 if ($seguido)
                 {
                     $line= new Timeline();
@@ -420,7 +420,7 @@ class ActivityPub
                 return response()->json(['message' => 'No implementado'],501);
             }
             case 'Update':
-                $seguido=Apfollowing::where('actor_id', $activity['actor'])->where('user_id', $user->id)->first();
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
                 if (is_null($seguido))
                     Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id);
                 else
