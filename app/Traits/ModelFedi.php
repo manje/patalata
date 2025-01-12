@@ -41,6 +41,7 @@ trait ModelFedi
                 'preferredUsername' => $this->slug,
                 'name' => $this->name,
                 'following' => route('activitypub.following', ['slug' => $this->slug]),
+                'followers' => route('activitypub.followers', ['slug' => $this->slug]),
                 'inbox' => route('activitypub.inbox', ['slug' => $this->slug]),
                 'outbox' => route('activitypub.outbox', ['slug' => $this->slug]),            
                 'publicKey' => [
@@ -119,9 +120,6 @@ trait ModelFedi
         return false;
     }
 
-    /**
-     * Distribute the model to the queue.
-     */
     public function distribute()
     {
         Queue::push(new DistribuirFedi($this));
@@ -129,7 +127,6 @@ trait ModelFedi
 
     public function Collection($listado,$url): JsonResponse
     {
-        // Compruebo si hay parámetro page
         if (!(Request::has('page'))) {
             $total=$listado->count();
             $list = [
@@ -141,16 +138,10 @@ trait ModelFedi
             ];
             return response()->json($list, 200, ['Content-Type' => 'application/activity+json']);
         }
-        // Recuperar seguidores paginados
         $res = $listado->orderBy('id','desc')
-            ->paginate(3); // Cambia el número según tus necesidades (ej. 20 seguidores por página)
-
+            ->paginate(20);
         $list = [];
-        foreach ($res as $item) {
-            $list[] = $item->object;
-        }
-
-        // Paginated response
+        foreach ($res as $item) $list[] = $item->object;
         $col = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id' => $url,

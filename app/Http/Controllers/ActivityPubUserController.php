@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Nota;
 use App\Models\Post;
 use App\Models\Apfollower;
+use App\Models\Apfollowing;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
@@ -47,29 +48,20 @@ class ActivityPubUserController extends Controller
         return ActivityPub::InBox($user,$activity);
     }
 
-    public function followingOLD($slug): JsonResponse
-    {
-        $user = User::where('slug', $slug)->firstOrFail();
-        $followers = Apfollower::where('actor', $user->GetActivity()['id'])->get();
-        $list=[];
-        foreach ($followers as $follower)
-            $list[]=$follower->object;
-        $following = [
-            '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id' => route('activitypub.following', ['slug' => $user->slug]),
-            'type' => 'Collection',
-            'totalItems' => count($list),
-            'orderedItems' => $list
-        ];
-        return response()->json($following, 200, ['Content-Type' => 'application/activity+json']);
-    }
-
-
     public function following($slug): JsonResponse
     {
         $user = User::where('slug', $slug)->firstOrFail();
-        $listado=Apfollower::where('actor', $user->GetActivity()['id']);
+        $listado=Apfollowing::where('actor', $user->GetActivity()['id']);
         $url=route('activitypub.following', ['slug' => $user->slug]);
+        return $this->Collection($listado,$url);
+    }
+
+
+    public function followers($slug): JsonResponse
+    {
+        $user = User::where('slug', $slug)->firstOrFail();
+        $listado=Apfollower::where('actor', $user->GetActivity()['id']);
+        $url=route('activitypub.followers', ['slug' => $user->slug]);
         return $this->Collection($listado,$url);
     }
 

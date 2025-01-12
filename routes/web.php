@@ -57,18 +57,23 @@ use App\Http\Controllers\ActivityPubUserController;
 
 Route::get('/ap/users/{slug}', [ActivityPubUserController::class, 'getActor'])
     ->name('activitypub.actor')
-    ->middleware('throttle:10,1'); // Opcional: limitar peticiones por seguridad
+    ->middleware('throttle:10,1');
 
 Route::post('/ap/users/{slug}/inbox', [ActivityPubUserController::class, 'inbox'])
     ->name('activitypub.inbox')
-    ->middleware('throttle:10,1'); // Opcional: limitar peticiones por seguridad
+    ->middleware('throttle:10,1');
 
 Route::get('/ap/users/{slug}/outbox', [ActivityPubUserController::class, 'outbox'])
     ->name('activitypub.outbox')
-    ->middleware('throttle:10,1'); // Opcional: limitar peticiones por seguridad
+    ->middleware('throttle:10,1'); 
 Route::get('/ap/users/{slug}/following', [ActivityPubUserController::class, 'following'])
     ->name('activitypub.following')
-    ->middleware('throttle:10,1'); // Opcional: limitar peticiones por seguridad
+    ->middleware('throttle:10,1'); 
+
+
+Route::get('/ap/users/{slug}/followers', [ActivityPubUserController::class, 'followers'])
+    ->name('activitypub.followers')
+    ->middleware('throttle:10,1'); 
 
 Use App\Http\Controllers\FediversoController;
 
