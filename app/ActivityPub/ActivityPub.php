@@ -29,32 +29,6 @@ use DateTime;
 
 class ActivityPub 
 {
-    static function getActor($user)
-    {
-        // Construye el objeto Actor en formato JSON-LD
-        $actor = [
-            '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id' => route('activitypub.actor', ['slug' => $user->slug]),
-            'type' => 'Person',
-            'preferredUsername' => $user->slug,
-            'name' => $user->name,
-            'following' => route('activitypub.following', ['slug' => $user->slug]),
-            'inbox' => route('activitypub.inbox', ['slug' => $user->slug]),
-            'outbox' => route('activitypub.outbox', ['slug' => $user->slug]),            
-            'publicKey' => [
-                'id' => route('activitypub.actor', ['slug' => $user->slug]) . '#main-key',
-                'owner' => route('activitypub.actor', ['slug' => $user->slug]),
-                'publicKeyPem' => $user->public_key,
-            ],
-            'icon' => [
-                'type' => 'Image',
-                'mediaType' => 'image/png',
-                'url' => $user->profile_photo_url,
-            ],
-        ];
-        return $actor;
-    }
-
     static function GetActorByUrl($user,$url)
     {
         if (!(is_string($url))) return false;
@@ -258,7 +232,7 @@ class ActivityPub
         if ($solocount) if (isset($col['totalItems'])) return $col['totalItems'];
         if ((isset($col['error'])) && ($solocount)) return "?";
         if (isset($col['error'])) return $col;
-        if  ((isset($col['type'])) &&  ($col['type']=='Collection')) 
+        if  ((isset($col['type'])) &&  ( ($col['type']=='Collection') ||   ($col['type']=='OrderedCollection') )  ) 
         {
 
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
@@ -434,7 +408,6 @@ class ActivityPub
                 {
                     Cache::put($activity['object'],['error'=>'Deleted'],3600*24*30);
                     Cache::put($user->id.'-'.$activity['object'],['error'=>'Deleted'],3600*24*30);
-                    Log::info('w948574'.print_r($activity,1));
                     TimeLine::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
                     return response()->json(['message' => 'Accepted'],202);
                 }

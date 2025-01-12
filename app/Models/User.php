@@ -10,6 +10,8 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Jetstream\HasTeams;
 use Laravel\Sanctum\HasApiTokens;
+use App\Traits\ModelFedi;
+
 
 use Illuminate\Support\Str; // Importar la clase Str
 use Illuminate\Contracts\Auth\MustVerifyEmail; 
@@ -26,6 +28,9 @@ class User extends Authenticatable
     use HasTeams;
     use Notifiable;
     use TwoFactorAuthenticatable;
+    use ModelFedi;
+
+    public $APtype='Person';
 
     /**
      * The attributes that are mass assignable.

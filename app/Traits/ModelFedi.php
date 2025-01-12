@@ -26,12 +26,41 @@ trait ModelFedi
 
     public function GetActivity()
     {
-        $idmodelo=Str::plural(Str::lower(class_basename($this)));
-        $user = User::find($this->user_id);
-        foreach ($this->APtranslate as $key => $value)
-            $this->$key = $this->$value;
+        if (isset($this->APtranslate))
+            foreach ($this->APtranslate as $key => $value)
+                $this->$key = $this->$value;
+        if ($this->APtype=='Person')
+        {
+            $activity = [
+                '@context' => 'https://www.w3.org/ns/activitystreams',
+                'id' => route('activitypub.actor', ['slug' => $this->slug]),
+                'type' => 'Person',
+                'preferredUsername' => $this->slug,
+                'name' => $this->name,
+                'following' => route('activitypub.following', ['slug' => $this->slug]),
+                'inbox' => route('activitypub.inbox', ['slug' => $this->slug]),
+                'outbox' => route('activitypub.outbox', ['slug' => $this->slug]),            
+                'publicKey' => [
+                    'id' => route('activitypub.actor', ['slug' => $this->slug]) . '#main-key',
+                    'owner' => route('activitypub.actor', ['slug' => $this->slug]),
+                    'publicKeyPem' => $this->public_key,
+                ],
+                'icon' => [
+                    'type' => 'Image',
+                    'mediaType' => 'image/png',
+                    'url' => $this->profile_photo_url,
+                ],
+            ];
+            return $activity;
+        }
+    
+
+
+
         if ($this->APtype=='Article')
         {
+            $idmodelo=Str::plural(Str::lower(class_basename($this)));
+            $user = User::find($this->user_id);
             $activity = [
                 '@context' => 'https://www.w3.org/ns/activitystreams',
                 'type' => 'Article',
@@ -58,6 +87,8 @@ trait ModelFedi
         }
         if ($this->APtype=='Note')
         {
+            $idmodelo=Str::plural(Str::lower(class_basename($this)));
+            $user = User::find($this->user_id);    
             $activity = [
                 '@context' => 'https://www.w3.org/ns/activitystreams',
                 'type' => 'Note',

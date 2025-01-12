@@ -25,8 +25,11 @@ class ActivityPubUserController extends Controller
     public function getActor($slug): JsonResponse
     {
         // Busca al usuario por su slug
+        Log::info("get actor");
         $user = User::where('slug', $slug)->firstOrFail();
-        $actor= ActivityPub::getActor($user);
+        Log::info("get actor 2");
+        $actor= $user->GetActivity();
+        Log::info("get actor 3".print_r($actor,1));
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
 
