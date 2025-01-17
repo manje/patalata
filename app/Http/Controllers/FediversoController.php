@@ -34,13 +34,21 @@ class FediversoController extends Controller
         $name=explode("@",$slug);
         if (count($name)==1)
         {
+            Log::info("slug profile $slug");
             $user=User::where('slug',$slug)->first();
+
             if (!$user)
             {
+                Log::info("404");
                 return "404";
             }
             else
             {
+                if ($request->wantsJson()) 
+                    return response()->json($user->GetActivity());
+                else
+                    return view('fediverso.profile', ['actor' => $user->GetActivity()]);
+                    
                 $name[0]=$slug;
                 // host de la app
                 $name[1]=$request->getHost();

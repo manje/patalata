@@ -9,9 +9,15 @@
         @if (count($timeline)>0)
             @if ($nuevas>0)
             <div class="m-4"  >
-                <div role="alert" class="alert"  wire:click="VerNuevas;">
+                <div role="alert" class="alert cursor-pointer"  wire:click="VerNuevas;">
                     <i class="fa fa-bell"></i>
-                    <span wire:target="VerNuevas" wire:loading.remove>{{$nuevas}} unread messages. Tap to see.</span>
+                    <span wire:target="VerNuevas" wire:loading.remove>Hay {{$nuevas}} 
+                        @if ($nuevas>1)
+                            toots
+                        @else
+                            toot
+                        @endif
+                         nuevos.</span>
                     <span wire:target="VerNuevas" wire:loading.delay class="loading loading-ring loading-md"></span>
                 </div>
             </div>

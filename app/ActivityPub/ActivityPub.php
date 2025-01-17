@@ -34,7 +34,8 @@ class ActivityPub
         if (!(is_string($url))) return false;
         if (strlen($url)<6) return false;
         if (substr($url,0,8)!='https://') return false;
-        $key=$user->id."-actor-".$url;
+        
+        $key="-actor-".$url;
         if ($out=Cache::get($key)) 
         {
           if (isset($out['userfediverso']))
@@ -54,16 +55,19 @@ class ActivityPub
         return $out;
     }
 
-    static function GetObjectByUrl($user,$url)
+    static function GetObjectByUrl($user,$url,$cache=300)
     {
         if (is_array($url)) return $url;
+        if ($user)
+            $key=$user->id."-o-".$url;
+        else
+            $key=$url;
+        if ($out=Cache::get($key))
+            return $out;
         $d=explode("/",$url)[2];
         $idca="$d ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
         if ($num++>100) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
-        $key=$user->id."-o-".$url;
-        if ($out=Cache::get($key))
-            return $out;
         Cache::put($idca,$num,3600);
         $out=self::GetUrlFirmado($user,$url);
         if (!(is_array($out)))
@@ -76,12 +80,13 @@ class ActivityPub
             Cache::put($key,$out,120);
         }
         else
-            Cache::put($key,$out,3600*4);
+            Cache::put($key,$out,$cache*60);
         return $out;
     }
 
     static function GetActorByUsername($user,$username)
     {
+
         $parts=explode("@",$username);
         if (count($parts)==2)
         {
@@ -143,7 +148,11 @@ class ActivityPub
         ];
         $activity=json_encode($activity);
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-        Log::info("devolver true o false segun el codigo de response $response");
+        if ((string)$response[0]!='2')
+        {
+            $Follow->delete();
+            return false;
+        }
         return true;
     }
     
@@ -221,7 +230,7 @@ class ActivityPub
     static function GetColeccion($user,$idlist,$solocount=false)
     {
         if (is_string($idlist))
-            $col=self::GetObjectByUrl($user,$idlist);
+            $col=self::GetObjectByUrl($user,$idlist,3);
         else
             $col=$idlist;
         if (array_is_list($col)) 
@@ -234,7 +243,6 @@ class ActivityPub
         if (isset($col['error'])) return $col;
         if  ((isset($col['type'])) &&  ( ($col['type']=='Collection') ||   ($col['type']=='OrderedCollection') )  ) 
         {
-
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
                 $col=self::GetObjectByUrl($user,$col['first']);
@@ -249,7 +257,7 @@ class ActivityPub
                     $items=[];
                 while (isset($col['next']))
                 {
-                    $col=self::GetObjectByUrl($user,$col['next']);
+                    $col=self::GetObjectByUrl($user,$col['next'],10);
                     if (isset($col['error']))
                     {
                         if ($solocount) return "?";
@@ -312,7 +320,11 @@ class ActivityPub
                 ];
                 $activity=json_encode($activity);
                 $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-                Log::warning('hay que gestionar la respuesta si falla mandar aceptar follow: '.print_r($response,1));
+                if ((string)$response[0]!='2')
+                {
+                  Log::error('Respuesta a follow erronea: '.print_r($response,1));
+                  return response()->json(['error'=>$response[0]],400);
+                }
                 return response()->json(['message' => 'Follow request received'],202);
             case 'Undo':
             {
@@ -329,6 +341,7 @@ class ActivityPub
                         return response()->json(['message' => 'Undo request received'],202);
                     default:
                         Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
+                        Log::info(print_r($activity,1));
                         return response()->json(['message' => 'Unknow activity '.$activity['type']],202);
                 }
             }
@@ -363,7 +376,7 @@ class ActivityPub
                             if ($user instanceof Team) $line->team_id=$user->id;
                             $line->actor_id=$activity['actor'];
                             $line->activity=$activity["object"]['id'];
-                            if (!(is_string[$activity['object']]))
+                            if (!(is_string([$activity['object']])))
                                 Cache::put($activity["object"]['id'],$activity["object"],3600*8);
                             $line->save();
                             return response()->json(['message' => 'Accept'],202);
@@ -473,28 +486,31 @@ class ActivityPub
         if (!($user))
         {
             $res=Cache::get($url);
-            if ($res)
-                return $res;
+            if ($res) return $res;
             // La misma petición pero sin firmar
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
-
-            curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-
             $date = new DateTime('UTC');
             $headers = [
-                '(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),
-                'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
-                'Host' => parse_url($url, PHP_URL_HOST),
-                'Accept' => 'application/activity+json, application/ld+json, application/json' ,
+                #'(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),
+                #'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
+                #'Host' => parse_url($url, PHP_URL_HOST),
+                'Accept' => 'application/jrd+json, application/ld+json, application/json' ,
                 'Content-Type' => 'application/json',
             ];
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             $response = curl_exec($ch);
+            if (curl_errno($ch)) {
+                Log::info('error curl',[curl_errno($ch),curl_error($ch)]);
+                return ['error'=>curl_error($ch)];
+            }
+            curl_close($ch);
+                Log::info('res '.$url."\n".print_r($response,1));
             list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-            return json_decode($response,1);
+            Log::info("body $responseBody".print_r(json_decode($response,1),1));
+            return json_decode($responseBody,1);
         }
         $idcache=$user->id."-".$url;
         $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET

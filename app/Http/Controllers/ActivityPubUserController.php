@@ -8,6 +8,7 @@ use App\Models\Nota;
 use App\Models\Post;
 use App\Models\Apfollower;
 use App\Models\Apfollowing;
+use App\Models\Outbox;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
@@ -132,39 +133,10 @@ class ActivityPubUserController extends Controller
     public function outbox($slug): JsonResponse
     {
         $user = User::where('slug', $slug)->firstOrFail();
-        $notas = Nota::where('user_id', $user->id)
-            ->where('created_at', '>=', now()->subYear())
-            ->orderBy('created_at', 'desc')
-            ->get();
-        $posts = Post::where('user_id', $user->id)
-            ->where('created_at', '>=', now()->subYear())
-            ->orderBy('created_at', 'desc')
-            ->get();
-        $list=[];
-        foreach ($posts as $activity)
-        {
-            $a=$activity->GetActivity();
-            $list[]=$a;
-        }
-        foreach ($notas as $activity)
-        {
-            $a=$activity->GetActivity();
-            $list[]=$a;
-        }
-        // ordeno $activity por updated
-        usort($list, function($a, $b) {
-            return $b['updated'] <=> $a['updated'];
-        });
+        $list=Outbox::where('actor', $user->GetActivity()['id']);
+        $url=route('activitypub.outbox', ['slug' => $user->slug]);
+        return $this->Collection($list,$url);
 
-        // Construye el contenedor del Outbox
-        $outbox = [
-            '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id' => route('activitypub.outbox', ['slug' => $user->slug]),
-            'type' => 'OrderedCollection',
-            'totalItems' => count($list),
-            'orderedItems' => $list
-        ];
-        return response()->json($outbox, 200, ['Content-Type' => 'application/activity+json']);
     }
 
 }

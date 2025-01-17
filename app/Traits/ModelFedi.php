@@ -11,6 +11,7 @@ use App\Jobs\DistribuirFedi;
 
 use App\Models\User;
 use App\Models\Post;
+use App\Models\Outbox;
 
 use Illuminate\Support\Facades\Log;
 
@@ -21,10 +22,17 @@ trait ModelFedi
      */
     public static function bootModelFedi()
     {
-        static::created(function ($model) {
+        static::saved(function ($model) {
             Log::info("tipo: ".$model->APtype." ".$model->slug);
             if ($model->APtype!='Person')
+            {
                 $model->distribute();
+                // creo objeto Outbox
+                Outbox::create([
+                    'actor' => $model->GetActivity()['attributedTo'],
+                    'object' => $model->GetActivity()['id']
+                ]);
+            }
         });
     }
 

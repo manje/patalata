@@ -21,7 +21,7 @@ wire:init="load" >
             @case('Announce')
                 <div class="flex text-gray-500">
                     <span>
-                        Rebotado por <a href='/{{'@'}}{{ $activity['actor']['userfediverso'] }}'   >{{ $activity['actor']['userfediverso'] }}</a>
+                        Impulsado por <a href='/{{'@'}}{{ $activity['actor']['userfediverso'] }}'   >{{ $activity['actor']['userfediverso'] }}</a>
                     </span>
 
 
@@ -204,7 +204,8 @@ wire:init="load" >
                                 {{ $activity['published']->diffForHumans() }}
                         </p>
                         <p class="mt-2">
-                        {!! $activity['content'] !!}
+                            {!! $activity['content'] ?? 'ERROR: Sin descripción para esta nota ¿?.' !!}
+
                         </p>
                     </div>
                 </div>
@@ -258,7 +259,7 @@ wire:init="load" >
                         {{ $activity['num_shares']}}
                     @endif
                     @endif
-                    <span>Retwittear</span>
+                    <span>Impulsos</span>
                 </button>
                 <button class="flex items-center space-x-1"  wire:click="verrespuestas()">
                     <i class="fa-solid fa-reply mr-2"></i>
