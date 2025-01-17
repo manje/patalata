@@ -148,7 +148,7 @@ class ActivityPub
         ];
         $activity=json_encode($activity);
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-        if ((string)$response[0]!='2')
+        if (((string)$response)[0]!='2')
         {
             $Follow->delete();
             return false;
@@ -176,7 +176,11 @@ class ActivityPub
             ];
             $activity=json_encode($activity);
             $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-            Log::info("hay que controlar aqui codigo respuesta $response");
+            if (((string)$response)[0]!='2')
+            {
+                Log::info("hay que controlar aqui codigo respuesta $response y mandarlo a un job");
+                return false;
+            }
             Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->delete();
             return true;
         }

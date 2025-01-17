@@ -126,7 +126,7 @@ class Activity extends Component
     {
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Note')
-        if (!(isset($this->activity['content']))) 
+        #if (!(isset($this->activity['content']))) 
             Log::info(print_r($this->activity,1));
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";
         return view('livewire.fediverso.activity', [
