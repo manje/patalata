@@ -29,7 +29,7 @@
                     @endif
                 @endif
                 @if (isset($actor['countfollowers']))
-                    @if (is_integer($actor['countfollowing']))
+                    @if (is_integer($actor['countfollowers']))
                     <span class='ml-4'>{{ number_format($actor['countfollowers'],0,'.','.') }} seguidores</span>
                     @endif
                 @endif

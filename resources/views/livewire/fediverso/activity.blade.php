@@ -19,20 +19,16 @@ wire:init="load" >
     @else
         @switch($activity['type'])
             @case('Announce')
-                <div class="flex text-gray-500">
+                <div class="flex text-gray-500 mx-2">
                     <span>
                         Impulsado por <a href='/{{'@'}}{{ $activity['actor']['userfediverso'] }}'   >{{ $activity['actor']['userfediverso'] }}</a>
                     </span>
-
-
-
-
                     <div class="ml-14 flex-1 text-right">
                         {{ $activity['published']->diffForHumans() }}
                     </div> 
                 </div>
                 <div>
-                    <livewire:fediverso.activity :activity="$activity['object']"  :diferido="true" :key="$activity['id']" />
+                    <livewire:fediverso.activity :activity="$activity['object']"  :diferido="false" :key="$activity['id']" />
                 </div>
             @break
             @case('Create')
@@ -215,7 +211,7 @@ wire:init="load" >
             
         @endswitch
         @if ($activity['type']!='Announce')
-        @if (isset($activity['attachment']))
+            @if (isset($activity['attachment']))
                 @foreach ($activity['attachment'] as $media)
                     <div class="mt-2">
                         @if (isset($media['mediaType']))
@@ -239,23 +235,29 @@ wire:init="load" >
                         @endif
                     </div>
                 @endforeach
-                @if (isset($activity['tag']))
-                    @if (count($activity['tag'])>0)
-                    <div class="mt-2">
-                    @foreach ($activity['tag'] as $tag)
-                        @if ($tag['type']=='Hashtag')
-                        <span class="bg-gray-100 text-gray-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">{{ $tag['name'] }}</span>
-                        @endif
-                    @endforeach
-                    </div>
+            @endif
+            @if (isset($activity['tag']))
+                @if (count($activity['tag'])>0)
+                <div class="mt-2">
+                @foreach ($activity['tag'] as $tag)
+                    @if ($tag['type']=='Hashtag')
+                    <span class="bg-gray-100 text-gray-800 text-xs font-medium mr-2 px-2.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300">{{ $tag['name'] }}</span>
                     @endif
+                @endforeach
+                </div>
                 @endif
             @endif
 
-
-            <div class="mt-2 flex space-x-4 text-gray-500">
-                <button class="flex items-center space-x-1">
-                    <i class="fa-regular fa-heart mr-2"></i>
+            <div class="fa-solid  fa-regular fa-heart invisible text-blue"></div>
+            <div class="mt-2 pb-2 flex space-x-4 text-gray-500 border-b ">
+                <button class="flex items-center space-x-1" wire:click="setlike()">
+                    <i class="
+                    @if ($like)
+                        fa-solid 
+                    @else
+                        fa-regular
+                    @endif
+                    fa-heart mr-2 text-blue"></i>
                     @if (isset($activity['num_likes']))
                     @if ($activity['num_likes']!=0)
                         {{ $activity['num_likes']}}
@@ -278,7 +280,7 @@ wire:init="load" >
                     <span>Respuestas</span>
                 </button>
             </div>
-             
+            
 
             <span wire:target="verrespuestas" wire:loading.delay class="loading loading-ring loading-md"></span>
 

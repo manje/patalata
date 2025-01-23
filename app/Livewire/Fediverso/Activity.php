@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
 
 use App\ActivityPub\ActivityPub;
-
+use App\Models\Like;
 use Carbon\Carbon;
 
 
@@ -23,7 +23,8 @@ class Activity extends Component
     public $listrespuestas=[];
     public $respuestas=false;
     public $msgrespondiendo=true;
-
+    public $like=false;
+    public $rt=false;
 
     public function mount($activity,$diferido=true,$msgrespondiendo=true)
     {
@@ -96,10 +97,8 @@ class Activity extends Component
                 unset($this->activity['isreply']);
             }
         }
-        if (isset($this->activity['replies']))
-        {
-            $x=ActivityPub::GetColeccion($this->user , $this->activity['replies'],true);
-        }
+        $this->like=(Like::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->count()>0);
+        
         if (isset($this->activity['content']))
             $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
     }
@@ -121,12 +120,65 @@ class Activity extends Component
             $this->respuestas=true;
         }
     }
+    public function setlike()
+    {
+        Log::info('like');
+        if ($this->like)
+        {
+            // undo
+            $like=Like::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->first();
+            $activity=[
+                '@context'=>'https://www.w3.org/ns/activitystreams',
+                'id'=>$this->user->GetActivity()['id'].'#likes/'.$like->id,
+                'type'=>'Undo',
+                'actor'=>$this->user->GetActivity()['id'],
+                'object'=>[
+                    'id'=>$this->user->GetActivity()['id'].'#likes/'.$like->id,
+                    'type'=>'Like',
+                    'actor'=>$this->user->GetActivity()['id'],
+                    'object'=>$this->activity['id']
+                    ]
+                ];
+            $res=ActivityPub::EnviarActividadPOST($this->user,json_encode($activity),$this->activity['attributedTo']['inbox']);
+            Log::info('res '.print_r($res,1));
+            $res="$res";
+            if ($res[0]!='2')
+            {
+                Log::info('like3 error '.$res);
+            }
+            else
+                $like->delete();
+            $this->like=false;
+        }
+        else{
+            Log::info('like2');
+            $this->like=true;
+            $like=Like::firstOrCreate(['object'=>$this->activity['id'], 'actor'=>$this->user->GetActivity()['id']]);
+            $activity=[
+                '@context'=>'https://www.w3.org/ns/activitystreams',
+                'id'=>$this->user->GetActivity()['id'].'#likes/'.$like->id,
+                'type'=>'Like',
+                'actor'=>$this->user->GetActivity()['id'],
+                'object'=>$this->activity['id']
+            ];
+            $res=ActivityPub::EnviarActividadPOST($this->user,json_encode($activity),$this->activity['attributedTo']['inbox']);
+            Log::info('res '.print_r($res,1));
+            $res="$res";
+            if ($res[0]!='2')
+            {
+                $this->like=false;
+                $like->delete();
+
+            }
+        }
+    }
 
     public function render()
     {
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
+        if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')
-        #if (!(isset($this->activity['content']))) 
+        if (!(isset($this->activity['content']))) 
             Log::info(print_r($this->activity,1));
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";
         return view('livewire.fediverso.activity', [
@@ -134,7 +186,8 @@ class Activity extends Component
             'origen' => $this->origen,
             'loading' => $this->loading,
             'listrespuestas'=>$this->listrespuestas,
-            'msgrespondiendo'=>$this->msgrespondiendo
+            'msgrespondiendo'=>$this->msgrespondiendo,
+            'like'=>$this->like
         ]);
     }
 }

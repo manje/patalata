@@ -11,6 +11,8 @@ use App\Models\Timeline;
 use App\Models\Like;
 use App\Models\Announce;
 
+
+
 use Illuminate\Support\Facades\Cache;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,6 +23,7 @@ use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
+use App\Jobs\SendActivity;
 
 use HTMLPurifier;
 use HTMLPurifier_Config;
@@ -31,9 +34,7 @@ class ActivityPub
 {
     static function GetActorByUrl($user,$url)
     {
-        if (!(is_string($url))) return false;
-        if (strlen($url)<6) return false;
-        if (substr($url,0,8)!='https://') return false;
+        if(!\p3k\url\is_url($url)) return false;
         
         $key="-actor-".$url;
         if ($out=Cache::get($key)) 
@@ -57,12 +58,15 @@ class ActivityPub
 
     static function GetObjectByUrl($user,$url,$cache=300)
     {
+        // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
         if (is_array($url)) return $url;
         if ($user)
             $key=$user->id."-o-".$url;
         else
             $key=$url;
         if ($out=Cache::get($key))
+            return $out;
+        if ($out=Cache::get($url))
             return $out;
         $d=explode("/",$url)[2];
         $idca="$d ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
@@ -74,13 +78,17 @@ class ActivityPub
         {
             $out=['error'=>$out];
             Cache::put($key,$out,120);
+            return $out;
         }
         if (isset($out['error']))
         {
             Cache::put($key,$out,120);
         }
         else
+        {
             Cache::put($key,$out,$cache*60);
+            if ($key!=$url) Cache::put($key,$out,$cache*60);
+        }
         return $out;
     }
 
@@ -132,7 +140,8 @@ class ActivityPub
 
     static function seguir($user,$actor)
     {
-        if ($actor['id']==route('activitypub.actor', ['slug' => $user->slug]))
+
+        if ($actor['id']==$user->GetActivity()['id'])
             return false;
         $Follow = new Apfollowing();
         $Follow->object = $actor['id'];
@@ -147,6 +156,7 @@ class ActivityPub
             'object' => $actor['id']
         ];
         $activity=json_encode($activity);
+        Log::info('inbox: '.$actor['inbox']);
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
         if (((string)$response)[0]!='2')
         {
@@ -163,6 +173,7 @@ class ActivityPub
         {
             $id=$Follow->id;
             Log::info('Dejar de seguir a '.$actor['id'].' nº registro '.$id);
+            Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->delete();
             $activity=[
                 '@context' => 'https://www.w3.org/ns/activitystreams',
                 'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$id,
@@ -178,10 +189,9 @@ class ActivityPub
             $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
             if (((string)$response)[0]!='2')
             {
-                Log::info("hay que controlar aqui codigo respuesta $response y mandarlo a un job");
+                Log::info("ERROR hay que controlar aqui codigo respuesta $response y mandarlo a un job");
                 return false;
             }
-            Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->delete();
             return true;
         }
         return false;
@@ -283,7 +293,20 @@ class ActivityPub
                 if ($solocount) return count($items);
                 return $items;
             }
-            Log::error('1459749543');
+/*            
+
+hay colecciones que no tienen ni items ni número de items
+
+Este es un ejemplo de lo que nos hemos encontrado
+
+[2025-01-21 14:59:16] production.INFO: Array
+(
+    [@context] => https://www.w3.org/ns/activitystreams
+    [id] => https://infosec.exchange/users/xxxxxxxx/followers
+    [type] => OrderedCollection
+)
+*/
+
             return false;
         }
         else
@@ -322,13 +345,23 @@ class ActivityPub
                     'actor' => route('activitypub.actor', ['slug' => $user->slug]),
                     'object' => $activity['id']
                 ];
+                /*
                 $activity=json_encode($activity);
                 $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-                if ((string)$response[0]!='2')
+                if (strlen($response)!=3) 
+                    Log::error('Respuesta a accept follow: '.print_r($response,1));
+                $response="$response";
+                if ($response[0]!='2')
                 {
-                  Log::error('Respuesta a follow erronea: '.print_r($response,1));
+                  Log::error('Respuesta _a_ follow erronea: '.print_r($response,1));
                   return response()->json(['error'=>$response[0]],400);
                 }
+                */
+                /* 
+                   Uso un Job para mandar la actividad, porque no puedo aceptar 
+                   la solicitud de follow antes de responder a la petición 
+                */
+                SendActivity::dispatch(['activity'=>$activity,'user'=>$user,'to'=>$url]);
                 return response()->json(['message' => 'Follow request received'],202);
             case 'Undo':
             {
@@ -344,8 +377,8 @@ class ActivityPub
                         Like::where('actor',$activity['actor'])->where('object',$activity["object"]["object"])->delete();
                         return response()->json(['message' => 'Undo request received'],202);
                     default:
-                        Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
                         Log::info(print_r($activity,1));
+                        Log::info('Unknown activity type (undo): ' . $activity['type'] . '/' . $activity["object"]["type"]);
                         return response()->json(['message' => 'Unknow activity '.$activity['type']],202);
                 }
             }
@@ -356,7 +389,8 @@ class ActivityPub
                         Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->update(['accept' => true]);
                         return response()->json(['message' => 'Accept'],202);
                     default:
-                        Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
+                        Log::info(print_r($activity,1));
+                        Log::info('Unknown activity type: (accept)' . $activity['type'] . '/' . $activity["object"]["type"]);
                         return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
                 }
             }
@@ -365,30 +399,56 @@ class ActivityPub
                 // Compruebo si el actor está entre los seguidos del usuario
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
                 if (is_null($seguido))
-                    Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id);
+                {
+                    if (isset($activity['object']['inReplyTo']))
+                    {
+                        // Como nos notifican de un nuevo comentario, borramos los replies o el propio objeto, a esto hay que darle una vuelta
+                        $url=$activity['object']['inReplyTo'];
+                        $publicacion=self::GetObjectByUrl($user,$url);
+                        if (!is_null($publicacion))
+                        {   
+                            $replies=$publicacion['replies'];
+                            Log::info('borro cache de replies');
+                            if (is_array($replies))
+                                Cache::forget($url);
+                            else
+                                Cache::forget($replies);
+                        }
+
+                    }
+                    else
+                    {
+                        Log::info(print_r($activity,1));
+                        Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id . 'y nos está mandando cosas');
+                    }
+                    return response()->json(['message' => 'Accept'],202);
+                }
                 else
                 {
+                    // un create de un actor a el que seguimos lo incluimos en el timeline siempre, si después la actividad es erronea o lo que sea lo vermos después
+                    if ( $activity["object"]["attributedTo"] != $activity['actor'] )
+                    {
+                        Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'] );
+                        return response()->json(['message' => 'Bad Request'],400);
+                    }
+                    $line= new Timeline();
+                    if ($user instanceof User) $line->user_id=$user->id;
+                    if ($user instanceof Team) $line->team_id=$user->id;
+                    $line->actor_id=$activity['actor'];
+                    $line->activity=$activity["object"]['id'];
+                    // guardo en cache la actividad
+                    Cache::put($activity["object"]['id'],$activity["object"],3600*8);
+                    
+
+                    // Aqui gestionamos la actividad, esto es, según el tipo si queremos añadirl a colecciones publicas, incluir un evento en la agenda, procesar HastTags, etc.
+                    
+                    
+                    // Aqui gestionamos la actividad en función del tipo
                     switch ($activity["object"]["type"]) {
                         case 'Note':
-                            if ( $activity["object"]["attributedTo"] != $activity['actor'] )
-                            {
-                                Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'] );
-                                return false;
-                            }
-                            $line= new Timeline();
-                            if ($user instanceof User) $line->user_id=$user->id;
-                            if ($user instanceof Team) $line->team_id=$user->id;
-                            $line->actor_id=$activity['actor'];
-                            $line->activity=$activity["object"]['id'];
-                            if (!(is_string([$activity['object']])))
-                                Cache::put($activity["object"]['id'],$activity["object"],3600*8);
-                            $line->save();
-                            return response()->json(['message' => 'Accept'],202);
-                        default:
-                            Log::info(print_r($activity,1));
-                            Log::info('Unknown activity type: ' . $activity['type'] . '/' . $activity["object"]["type"]);
-                            return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
+                            break;
                     }
+                    return response()->json(['message' => 'Accept'],202);
                 }
             }
             case 'Announce':
@@ -418,6 +478,7 @@ class ActivityPub
             {
                 Log::info('Petición de Like '.print_r($activity,1));
                 Like::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
+                Log::info('Petición de Like ok');
                 return response()->json(['message' => 'OK'],200);
             }
             case 'Delete':
@@ -461,9 +522,12 @@ class ActivityPub
                 }
                 return response()->json(['message' => 'No implementado'],501);
             default:
-                Log::info('Unknown activity type: ' . $activity['type']);
+                Log::info('Unknown activity type root: ' . $activity['type']);
+                Log::info(print_r($activity,1));
                 return response()->json(['message' => 'Unknow activity '.$activity['type']],501);
         }
+        Log::info(print_r($activity,1));
+        Log::info('Aquí no deberíamos llegar nunca, debemos devolver siempre una respuesta http');
         return true;
     }
 
@@ -471,6 +535,7 @@ class ActivityPub
 
     static function EnviarActividadPOST($user,$json,$inbox)
     {
+        if(!\p3k\url\is_url($inbox)) return false; 
         $headers = HTTPSignature::sign($user, $json, $inbox);
         $ch = curl_init($inbox);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -478,19 +543,17 @@ class ActivityPub
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         curl_setopt($ch, CURLOPT_HEADER, true);
         $response = curl_exec($ch);
-        $response=json_decode($response, true);        
+        $response=json_decode($response, true);
         $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
         return $codigo;
     }
 
     static function GetUrlFirmado($user,$url)
     {
-        $response=Cache::get($url);
-        if ($response) return $response;
+        if(!\p3k\url\is_url($url)) return false; 
         if (!($user))
         {
-            $res=Cache::get($url);
-            if ($res) return $res;
+            Log::info($user);
             // La misma petición pero sin firmar
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -508,15 +571,16 @@ class ActivityPub
             $response = curl_exec($ch);
             if (curl_errno($ch)) {
                 Log::info('error curl',[curl_errno($ch),curl_error($ch)]);
-                return ['error'=>curl_error($ch)];
+                $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                return ['error'=>curl_error($ch),'errorhttp'=>$codigo];
             }
             curl_close($ch);
-                Log::info('res '.$url."\n".print_r($response,1));
+            Log::info('resX '.$url."\n".print_r($response,1));
             list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
             Log::info("body $responseBody".print_r(json_decode($response,1),1));
             return json_decode($responseBody,1);
         }
-        $idcache=$user->id."-".$url;
+
         $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -525,8 +589,10 @@ class ActivityPub
         curl_setopt($ch, CURLOPT_HEADER, true); // Incluir los encabezados en la respuesta
         $response = curl_exec($ch);
         if (curl_errno($ch)) {
-            Log::info('error curl',[curl_errno($ch),curl_error($ch)]);
-            return ['error'=>curl_error($ch)];
+            $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            Log::info('error curl',[curl_errno($ch),curl_error($ch),$codigo]);
+            Log::info('dio error '.print_r($headers,1));
+            return ['error'=>curl_error($ch),'errorhttp'=>$codigo];
         }
         curl_close($ch);
         list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
@@ -564,6 +630,36 @@ class ActivityPub
             return true;
         else
             return false;
+    }
+
+    static function like($user,$id)
+    {
+        Log::info("like a $id");
+        $actor=$user->GetActivity()['id'];
+        $obj=self::GetObjectByUrl($user,$id);
+        if (isset($obj['error']))
+        {
+            Log::info("error: ".print_r($obj,1));
+            return false;
+        }
+        $activity=[
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$id,
+            'type' => 'Like',
+            'actor' => $actor,
+            'object' => $id
+        ];
+        $activity=json_encode($activity);
+        $response=self::EnviarActividadPOST($user,$activity,$obj['inbox']);
+        if (((string)$response)[0]!='2')
+        {
+            return false;
+        }
+        $like=new Like();
+        $like->actor=$actor;
+        $like->object=$id;
+        $like->save();
+        return true;
     }
 
 
