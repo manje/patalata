@@ -56,16 +56,11 @@ class ActivityPub
         return $out;
     }
 
-    static function GetObjectByUrl($user,$url,$cache=300)
+    static function GetObjectByUrl($user,$url,$cache=false)
     {
+        if ($cache===false) $cache=60*24*7;
         // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
         if (is_array($url)) return $url;
-        if ($user)
-            $key=$user->id."-o-".$url;
-        else
-            $key=$url;
-        if ($out=Cache::get($key))
-            return $out;
         if ($out=Cache::get($url))
             return $out;
         $d=explode("/",$url)[2];
@@ -77,17 +72,16 @@ class ActivityPub
         if (!(is_array($out)))
         {
             $out=['error'=>$out];
-            Cache::put($key,$out,120);
+            Cache::put($url,$out,120);
             return $out;
         }
         if (isset($out['error']))
         {
-            Cache::put($key,$out,120);
+            Cache::put($url,$out,120);
         }
         else
         {
-            Cache::put($key,$out,$cache*60);
-            if ($key!=$url) Cache::put($key,$out,$cache*60);
+            Cache::put($url,$out,$cache*60);
         }
         return $out;
     }
@@ -111,6 +105,7 @@ class ActivityPub
                 $actor=Cache::get($idcache);
                 if (!$actor)
                     $actor=self::GetUrlFirmado($user,$url);
+                    
                 if ($actor)
                 {
                     Cache::put($idcache,$actor,3600*24);
@@ -157,9 +152,10 @@ class ActivityPub
         ];
         $activity=json_encode($activity);
         Log::info('inbox: '.$actor['inbox']);
+        #Log::info(print_r($activity,1));
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
         if (((string)$response)[0]!='2')
-        {
+        {            
             $Follow->delete();
             return false;
         }
@@ -322,6 +318,7 @@ Este es un ejemplo de lo que nos hemos encontrado
     static function InBox($user,$activity)
     {
         // Aquí llega la petición con la firma verificada
+        #Log::info(print_r($activity,1));
         if (isset($activity["object"]["attributedTo"]))
             if ( $activity["object"]["attributedTo"] != $activity['actor'] )
             {
@@ -472,6 +469,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 {
                     Announce::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
                 }
+                #Log::info("Announce: ".print_r($activity,1));
                 return response()->json(['message' => 'Accept'],202);
             }
             case 'Like':
@@ -543,8 +541,10 @@ Este es un ejemplo de lo que nos hemos encontrado
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         curl_setopt($ch, CURLOPT_HEADER, true);
         $response = curl_exec($ch);
+        Log::info("res $response");
         $response=json_decode($response, true);
         $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        Log::info("cdigo EA $codigo");
         return $codigo;
     }
 

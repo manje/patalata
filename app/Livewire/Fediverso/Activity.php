@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 
 use App\ActivityPub\ActivityPub;
 use App\Models\Like;
+use App\Models\Announce;
 use Carbon\Carbon;
 
 
@@ -97,10 +98,15 @@ class Activity extends Component
                 unset($this->activity['isreply']);
             }
         }
-        $this->like=(Like::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->count()>0);
+        if (isset($this->activity['id']))
+        {
+            $this->like=(Like::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->count()>0);
+            $this->rt=(Announce::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->count()>0);
+        }
         
         if (isset($this->activity['content']))
             $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
+        if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
     }
 
 
@@ -122,7 +128,6 @@ class Activity extends Component
     }
     public function setlike()
     {
-        Log::info('like');
         if ($this->like)
         {
             // undo
@@ -150,8 +155,8 @@ class Activity extends Component
                 $like->delete();
             $this->like=false;
         }
-        else{
-            Log::info('like2');
+        else
+        {
             $this->like=true;
             $like=Like::firstOrCreate(['object'=>$this->activity['id'], 'actor'=>$this->user->GetActivity()['id']]);
             $activity=[
@@ -173,12 +178,28 @@ class Activity extends Component
         }
     }
 
+    public function setimpulso()
+    {
+        Log::info("Hacemos rt1");
+        if ($this->rt)
+        {
+            Announce::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->first()->delete();
+            $this->rt=false;
+        }
+        else
+        {
+            Log::info("Hacemos rt");
+            $rt=Announce::firstOrCreate(['object'=>$this->activity['id'], 'actor'=>$this->user->GetActivity()['id']]);
+            $this->rt=true;
+        }
+    }
+
     public function render()
     {
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')
-        if (!(isset($this->activity['content']))) 
+        if (!(isset($this->activity['id']))) 
             Log::info(print_r($this->activity,1));
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";
         return view('livewire.fediverso.activity', [

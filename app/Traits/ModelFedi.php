@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use App\Jobs\DistribuirFedi;
 
 use App\Models\User;
+use App\Models\Team;
 use App\Models\Post;
 use App\Models\Outbox;
 
@@ -23,17 +24,53 @@ trait ModelFedi
     public static function bootModelFedi()
     {
         static::saved(function ($model) {
-            Log::info("tipo: ".$model->APtype." ".$model->slug);
+            Log::info("tipo: ".$model->APtype." act ".$model->actor);
             if ($model->APtype!='Person')
             {
                 $model->distribute();
                 // creo objeto Outbox
+                if (isset($model->actor))
+                    $actor=$model->actor;
+                else
+                    $actor=$model->GetActivity()['attributedTo'];
                 Outbox::create([
-                    'actor' => $model->GetActivity()['attributedTo'],
+                    'actor' => $actor,
                     'object' => $model->GetActivity()['id']
                 ]);
             }
         });
+
+        static::deleting(function ($model) {
+           
+            Log::info('Se está eliminando el modelo con ID: ' . $model->id);
+            if ($model->APtype=='Announce')
+            {
+                $activity=[
+                    '@context' => 'https://www.w3.org/ns/activitystreams',
+                    'id' => $model->GetActivity()['id'],
+                    '@context' => 'https://www.w3.org/ns/activitystreams',
+                    'id' => $model->GetActivity()['id'].'#undo',
+                    'type' => 'Undo',
+                    'actor' => $model->GetActivity()['actor'],
+                    'object' => $model->GetActivity()
+                ];
+                $model->distribute($activity);
+            }
+            // Si necesitas detener la eliminación, puedes lanzar una excepción
+            // throw new \Exception("No se puede eliminar este modelo");
+        });    
+    }
+
+    public function GetActor()
+    {
+        if (isset($this->actor))
+            return $this->actor;
+        else
+        {
+            $idmodelo=Str::plural(class_basename($this));
+            $user=User::find($this->user_id);
+            $actor=$user->GetActivity()['id'];
+        }
     }
 
     public function GetActivity()
@@ -41,6 +78,7 @@ trait ModelFedi
         if (isset($this->APtranslate))
             foreach ($this->APtranslate as $key => $value)
                 $this->$key = $this->$value;
+        $activity=false;
         if ($this->APtype=='Person')
         {
             $activity = [
@@ -66,7 +104,6 @@ trait ModelFedi
                     'url' => $this->profile_photo_url,
                 ],
             ];
-            return $activity;
         }
     
 
@@ -98,7 +135,21 @@ trait ModelFedi
                     'url' => asset('storage/'.$this->cover)
                 ];
             }
-            return $activity;
+        }
+
+        if ($this->APtype=='Announce')
+        {
+            $idmodelo=Str::plural(Str::lower(class_basename($this)));
+            $activity = [
+                '@context' => 'https://www.w3.org/ns/activitystreams',
+                'id' => Route($idmodelo.'.show', ['slug' => $this->id]),
+                'type' => 'Announce',
+                'actor' => $this->actor,
+                'published' => $this->created_at->toIso8601String(),
+                'to' => 'https://www.w3.org/ns/activitystreams#Public',
+                // 'cc' => Aquí necesitamos un endpoint para los seguidores de este usuario
+                'object' => $this->object
+            ];
         }
         if ($this->APtype=='Note')
         {
@@ -126,14 +177,48 @@ trait ModelFedi
                     'url' => asset('storage/'.$this->cover)
                 ];
             }
-            return $activity;
         }
-        return false;
+        return $activity;
     }
 
-    public function distribute()
+    public function distribute($activity=false)
     {
-        Queue::push(new DistribuirFedi($this));
+        if ($this->APtype=='Announce')
+        {
+            if  ( parse_url(config('app.url'), PHP_URL_HOST) != parse_url($this->actor, PHP_URL_HOST))
+                return false;
+            Log::info('distribuye porque es distinto');
+
+            $slug=explode('/',$this->actor);
+            $slug=$slug[count($slug)-1];
+            $user=$this->SlugToUser($slug);
+            Log::info("El usuario tiene id ".$user->id);
+        }
+        else
+        {
+            if ($this->team_id)
+              $user=Team::find($this->team_id);
+            else
+              $user=User::find($this->user_id);
+        }
+        Log::info('envio dist');
+        if ($activity)
+            $mod=false;
+        else
+            $mod=$this;
+        if ($mod===false)
+            Log::info("se envia por activity");
+        else
+            Log::info("se envia por model");
+        Queue::push(new DistribuirFedi($mod,$user,$activity));
+    }
+
+    public function SlugToUser($slug)
+    {
+        $user=User::where('slug', $slug)->first();
+        if (!($user)) $user=Team::where('slug', $slug)->first();
+        if (!($user)) return false;
+        return $user;
     }
 
     public function Collection($listado,$url): JsonResponse

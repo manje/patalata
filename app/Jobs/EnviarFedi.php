@@ -15,15 +15,18 @@ class EnviarFedi implements ShouldQueue
 {
     use Queueable;
 
+    public $backoff=300;
 
     public $data;
+    public $activity;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($data)
+    public function __construct($data,$activity=false)
     {
         $this->data = $data;
+        $this->activity=$activity;
     }
 
     /**
@@ -31,16 +34,21 @@ class EnviarFedi implements ShouldQueue
      */
     public function handle(): void
     {   
-        $activity=$this->data['modelo']->GetActivity();
-        Log::info("Enviar Fedi $activity[id]");
-        $json = [
-          '@context' => 'https://www.w3.org/ns/activitystreams',
-          'id' => $activity['id'],
-          'type' => 'Create',
-          'actor' => $this->data['actor'],
-          'to' => ['https://www.w3.org/ns/activitystreams#Public'],
-          'object' => $activity
-        ];
+        if ($this->activity)
+            $json=$this->activity;
+        else
+        {
+            $activity=$this->data['modelo']->GetActivity();
+            Log::info("Enviar Fedi $activity[id]");
+            $json = [
+            '@context' => 'https://www.w3.org/ns/activitystreams',
+            'id' => $activity['id'],
+            'type' => 'Create',
+            'actor' => $this->data['actor'],
+            'to' => ['https://www.w3.org/ns/activitystreams#Public'],
+            'object' => $activity
+            ];
+        }
         $json=json_encode($json);
         $actor=ActivityPub::GetActorByUrl($this->data['user'],$this->data['follower']);
         $headers = HTTPSignature::sign($this->data['user'], $json, $actor['inbox']);
@@ -54,7 +62,7 @@ class EnviarFedi implements ShouldQueue
         $res=curl_getinfo($ch);
         $response=json_decode($response, true); 
         $headers=curl_getinfo($ch, CURLINFO_HEADER_OUT);
-        Log::info('enviar actividad '.$activity['id'].' a '.$this->data['follower']);
+        Log::info('enviar actividad a '.$this->data['follower']);
         Log::info('Inbox response: '.$codigo);
         if (isset($response->error))
                 throw new \Exception('Error al distribuir la fedi');
@@ -62,4 +70,11 @@ class EnviarFedi implements ShouldQueue
                 throw new \Exception("Error al distribuir la fedi, código $codigo, respuesta: ".print_r($headers,1));
     
     }
+
+
+    public function retryUntil(): DateTime
+    {
+        return now()->addDays(2);
+    }
+
 }

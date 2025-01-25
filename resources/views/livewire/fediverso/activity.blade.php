@@ -3,7 +3,8 @@ listrespuestas=@if ($activity['type']  != 'Announce')
 border-b
 @endif
 p-2"
-wire:init="load" >
+wire:init="load" 
+ x-data=" { sensitive: {{ $activity['sensitive'] ? 'true' : 'false' }} ,  oculto: {{ $activity['sensitive'] ? 'true' : 'false' }} }" >
 
 @if ($loading)
     <div class="flex-1 flex items-center justify-center mt-2">
@@ -173,9 +174,9 @@ wire:init="load" >
                             </div>
                         @endif
                     @endif
-                    
                 @endif
-                <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
+
+                <div class="w-full flex items-start space-x-4 @if ($origen) ml-20 @endif">
                     <div class="avatar">
                         <div class="w-12 rounded-full">
                             @if (isset($activity['attributedTo']['icon']['url']))
@@ -185,7 +186,11 @@ wire:init="load" >
                             @endif
                         </div>
                     </div>
-                    <div>
+
+                        
+
+
+                    <div class="w-full">
                         <h2 class="font-bold text-lg">
                             @if (isset($activity['attributedTo']['preferredUsername']))
                             <a href="/{{"@"}}{{ $activity['attributedTo']['preferredUsername'] }}{{"@"}}{{ explode("/",$activity['attributedTo']['inbox'])[2] }}" class="text-lg">
@@ -199,10 +204,21 @@ wire:init="load" >
                             </a>
                                 {{ $activity['published']->diffForHumans() }}
                         </p>
-                        <p class="mt-2">
-                            {!! $activity['content'] ?? 'ERROR: Sin descripción para esta nota ¿?.' !!}
 
-                        </p>
+
+                        @if ($activity['sensitive'])
+                            <div x-show="sensitive" x-on:click="oculto = !oculto"
+                                 class="flex flex-items border border-4 border-yellow-300 bg-black text-white w-full">
+                                <div class="p-1 bg-blue text-center w-full">
+                                    <i class="text-yellow-500 p-1 fa-solid fa-triangle-exclamation"></i>
+                                    {{ $activity['summary'] }}
+                                    <i class="text-yellow-500 p-1 fa-solid fa-triangle-exclamation"></i>
+                                </div>
+                            </div>
+                        @endif
+                        <div x-show="!oculto">                            
+                            {!! $activity['content'] ?? 'ERROR: Sin contenido para esta nota ¿?.' !!}
+                        </div>
                     </div>
                 </div>
             @break
@@ -213,7 +229,7 @@ wire:init="load" >
         @if ($activity['type']!='Announce')
             @if (isset($activity['attachment']))
                 @foreach ($activity['attachment'] as $media)
-                    <div class="mt-2">
+                    <div>
                         @if (isset($media['mediaType']))
                             @switch ($media['mediaType'])
                                 @case ('image/jpeg')
@@ -248,12 +264,12 @@ wire:init="load" >
                 @endif
             @endif
 
-            <div class="fa-solid  fa-regular fa-heart invisible text-blue"></div>
+            <!--div class="fa-solid  fa-regular fa-heart invisible text-blue text-blue-500"></div-->
             <div class="mt-2 pb-2 flex space-x-4 text-gray-500 border-b ">
                 <button class="flex items-center space-x-1" wire:click="setlike()">
                     <i class="
                     @if ($like)
-                        fa-solid 
+                        fa-solid text-blue-500
                     @else
                         fa-regular
                     @endif
@@ -265,8 +281,16 @@ wire:init="load" >
                     @endif
                     <span>Me gusta</span>
                 </button>
-                <button class="flex items-center space-x-1">
-                <i class="fa-solid fa-retweet mr-2"></i>
+                <button class="flex items-center space-x-1" wire:click="setimpulso()">
+                <i class="
+                    @if ($rt)
+                        fa-solid text-blue-500
+                    @else
+                        fa-regular
+                    @endif
+                
+                
+                    fa-solid fa-retweet mr-2"></i>
                     @if (isset($activity['num_shares']))
                     @if ($activity['num_shares']!=0)
                         {{ $activity['num_shares']}}
