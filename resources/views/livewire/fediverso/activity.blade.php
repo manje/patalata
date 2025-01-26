@@ -208,7 +208,7 @@ wire:init="load"
 
                         @if ($activity['sensitive'])
                             <div x-show="sensitive" x-on:click="oculto = !oculto"
-                                 class="flex flex-items border border-4 border-yellow-300 bg-black text-white w-full">
+                                 class="flex flex-items border border-4 border-yellow-300 bg-black text-white w-full cursor-pointer">
                                 <div class="p-1 bg-blue text-center w-full">
                                     <i class="text-yellow-500 p-1 fa-solid fa-triangle-exclamation"></i>
                                     {{ $activity['summary'] }}
@@ -216,7 +216,7 @@ wire:init="load"
                                 </div>
                             </div>
                         @endif
-                        <div x-show="!oculto">                            
+                        <div x-show="!oculto" translate="yes">                            
                             {!! $activity['content'] ?? 'ERROR: Sin contenido para esta nota ¿?.' !!}
                         </div>
                     </div>

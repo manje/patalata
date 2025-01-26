@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Request;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 use App\Jobs\DistribuirFedi;
+use App\Jobs\EnviarActividadToActor;
 
 use App\Models\User;
 use App\Models\Team;
@@ -23,10 +24,11 @@ trait ModelFedi
      */
     public static function bootModelFedi()
     {
-        static::saved(function ($model) {
+        static::created(function ($model) {
             Log::info("tipo: ".$model->APtype." act ".$model->actor);
             if ($model->APtype!='Person')
             {
+                if (!$model->slug) $model->slug=$model->id;
                 $model->distribute();
                 // creo objeto Outbox
                 if (isset($model->actor))
@@ -58,6 +60,8 @@ trait ModelFedi
             }
             // Si necesitas detener la eliminación, puedes lanzar una excepción
             // throw new \Exception("No se puede eliminar este modelo");
+            // hay que lanzar delete si se trata de un objeto que se ha distribuido con create
+
         });    
     }
 
@@ -178,21 +182,43 @@ trait ModelFedi
                 ];
             }
         }
+        if ($this->APtype=='Block')
+        {
+            $activity = [
+                '@context' => 'https://www.w3.org/ns/activitystreams',
+                'id' => $this->actor."#/block/".$this->id,
+                'type' => 'Note',
+                'actor' => $this->actor,
+                'object' => $this->object
+
+            ];
+        }
         return $activity;
     }
 
     public function distribute($activity=false)
     {
-        if ($this->APtype=='Announce')
+        if (($this->APtype=='Announce') || ($this->APtype=='Block') )
         {
+            Log::info('comprobamos si la actividad está creada por nuestra instancia');
+            // Solo distribuimos los impulsos que sean creados en local
             if  ( parse_url(config('app.url'), PHP_URL_HOST) != parse_url($this->actor, PHP_URL_HOST))
                 return false;
-            Log::info('distribuye porque es distinto');
+            Log::info('distribuye '.$this->APtype.' porque no es recibido');
+
+
 
             $slug=explode('/',$this->actor);
             $slug=$slug[count($slug)-1];
             $user=$this->SlugToUser($slug);
             Log::info("El usuario tiene id ".$user->id);
+            if ($this->APtype=='Block')
+            {
+                // los bloqueos no se distribuyen a los seguidores
+                Queue::push(new EnviarActividadToActor($user,$this->object,$this->GetActivity()));
+            }
+
+            
         }
         else
         {

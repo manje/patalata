@@ -10,10 +10,10 @@ use App\Models\Apfollowing;
 use App\Models\Timeline;
 use App\Models\Like;
 use App\Models\Announce;
-
-
+use App\Models\Block;
 
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Queue;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
@@ -23,7 +23,7 @@ use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
-use App\Jobs\SendActivity;
+use App\Jobs\EnviarActividadToActor;
 
 use HTMLPurifier;
 use HTMLPurifier_Config;
@@ -342,23 +342,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                     'actor' => route('activitypub.actor', ['slug' => $user->slug]),
                     'object' => $activity['id']
                 ];
-                /*
-                $activity=json_encode($activity);
-                $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
-                if (strlen($response)!=3) 
-                    Log::error('Respuesta a accept follow: '.print_r($response,1));
-                $response="$response";
-                if ($response[0]!='2')
-                {
-                  Log::error('Respuesta _a_ follow erronea: '.print_r($response,1));
-                  return response()->json(['error'=>$response[0]],400);
-                }
-                */
-                /* 
-                   Uso un Job para mandar la actividad, porque no puedo aceptar 
-                   la solicitud de follow antes de responder a la petición 
-                */
-                SendActivity::dispatch(['activity'=>$activity,'user'=>$user,'to'=>$url]);
+                Queue::push(new EnviarActividad($user,$actor['id'],$activity));
                 return response()->json(['message' => 'Follow request received'],202);
             case 'Undo':
             {
@@ -372,6 +356,10 @@ Este es un ejemplo de lo que nos hemos encontrado
                         return response()->json(['message' => 'Undo request received'],202);
                     case 'Like':
                         Like::where('actor',$activity['actor'])->where('object',$activity["object"]["object"])->delete();
+                        return response()->json(['message' => 'Undo request received'],202);
+                    case 'Block':
+                        Log::info('undo block '.$activity['actor'].' '.$activity["object"]["object"]);
+                        Block::where('actor',$activity['actor'])->where('object',$activity["object"]["object"])->delete();
                         return response()->json(['message' => 'Undo request received'],202);
                     default:
                         Log::info(print_r($activity,1));
@@ -474,9 +462,14 @@ Este es un ejemplo de lo que nos hemos encontrado
             }
             case 'Like':
             {
-                Log::info('Petición de Like '.print_r($activity,1));
                 Like::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
                 Log::info('Petición de Like ok');
+                return response()->json(['message' => 'OK'],200);
+            }
+            case 'Block':
+            {
+                Log::info('Recibo Block');
+                Block::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
                 return response()->json(['message' => 'OK'],200);
             }
             case 'Delete':

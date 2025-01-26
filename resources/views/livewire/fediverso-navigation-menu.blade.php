@@ -28,7 +28,7 @@
             </a>
         </li>
         <li>
-            <a href="#" class="flex items-center">
+            <a href="/{{'@'}}{{ Auth::user()->slug }}" class="flex items-center">
                 <i class="fa-solid fa-user mr-2"></i>
                 Perfil
             </a>

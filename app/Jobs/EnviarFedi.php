@@ -21,7 +21,7 @@ class EnviarFedi implements ShouldQueue
     public $activity;
 
     /**
-     * Create a new job instance.
+     * Este trabajo se debe dejar de usar a favor de EnviarActividadToActor
      */
     public function __construct($data,$activity=false)
     {
