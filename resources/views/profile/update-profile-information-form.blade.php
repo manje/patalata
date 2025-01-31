@@ -62,9 +62,9 @@
         <!-- Username -->
         <div class="col-span-6 sm:col-span-4">
             <x-label for="username" value="{{ __('Username') }}" />
-            <div class="flex items-center">
-                <span class="px-3 py-2 bg-gray-200 border border-gray-300 rounded-l-md text-gray-600">@</span>
-                <x-input id="slug" type="text" class="mt-1 block w-full" wire:model="state.slug" required autocomplete="username" />
+            <div class="mt-1 ml-4">
+               
+            {{'@'}}{{ Auth::user()->slug }} 
             </div>
         </div>
 
