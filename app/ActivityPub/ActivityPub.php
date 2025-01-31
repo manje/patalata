@@ -4,6 +4,7 @@ namespace App\ActivityPub;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Team;
 use App\Models\Post;
 use App\Models\Apfollower;
 use App\Models\Apfollowing;
@@ -14,6 +15,7 @@ use App\Models\Block;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Auth;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation;
@@ -32,15 +34,32 @@ use DateTime;
 
 class ActivityPub 
 {
+
+    static function GetIdentidad()
+    {
+        $user=Auth::user();
+        if ($user->current_team_id)
+        {
+            $team=Team::find($user->current_team_id);
+            return $team;
+        }
+        return $user;
+    }
+
+    static function GetIdentidadBySlug($slug)
+    {
+        $user=User::where('slug',$slug)->first();
+        if (!$user) $user=Team::where('slug',$slug)->first();
+        return $user;
+    }
+
     static function GetActorByUrl($user,$url)
     {
         if(!\p3k\url\is_url($url)) return false;
-        
         $key="-actor-".$url;
         if ($out=Cache::get($key)) 
         {
-          if (isset($out['userfediverso']))
-            return $out;
+          if (isset($out['userfediverso'])) return $out;
         }
         $out=self::GetObjectByUrl($user,$url);
         if (is_null($out)) return ['error'=>'response null'];
@@ -51,22 +70,35 @@ class ActivityPub
         if (isset($out['preferredUsername']))
             $out['userfediverso']=$out['preferredUsername']."@$d";
         else
-            return false;
+        {   
+            print_r($out);
+            #$out['error']='Actor inválido';
+            return $out;
+        }
+            
         Cache::put($key,$out,3600*24*5);
         return $out;
     }
+
 
     static function GetObjectByUrl($user,$url,$cache=false)
     {
         if ($cache===false) $cache=60*24*7;
         // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
         if (is_array($url)) return $url;
-        if ($out=Cache::get($url))
-            return $out;
-        $d=explode("/",$url)[2];
-        $idca="$d ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
+        if(!\p3k\url\is_url($url)) return false;
+        $domain=parse_url($url, PHP_URL_HOST);
+        $idbantmp="idbantmp $domain";
+        if ($out=Cache::get($idbantmp))
+        {
+          return $out;
+        }
+
+        #if ($out=Cache::get($url)) return $out;
+        $idca="$domain ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
-        if ($num++>100) return ['error'=>"muchas peticiones a $d"]; //    150 parecen muchas, con 100 va piano
+        #echo "    $num   ";
+        if ($num++>250) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
         $out=self::GetUrlFirmado($user,$url);
         if (!(is_array($out)))
@@ -75,6 +107,21 @@ class ActivityPub
             Cache::put($url,$out,120);
             return $out;
         }
+        if ($out['codhttp']==429)
+        {
+            $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
+            Cache::put($idbantmp,$out,60);
+        }
+        if (isset($out['errorcurl']))
+        {
+            if ($out['errorcurl']>0)
+            {
+                $out['error']='Error de curl';
+                $out=['error'=>'curl','coderror'=>$out['errorcurl']];
+                Cache::put($idbantmp,$out,60*60*12);
+            }
+        }
+
         if (isset($out['error']))
         {
             Cache::put($url,$out,120);
@@ -88,7 +135,9 @@ class ActivityPub
 
     static function GetActorByUsername($user,$username)
     {
-
+        $dica="actor by username $username";
+        $actor=Cache::get($dica);
+        if ($actor) return $actor;
         $parts=explode("@",$username);
         if (count($parts)==2)
         {
@@ -98,17 +147,13 @@ class ActivityPub
             if (preg_match('/^[a-z0-9.-]+$/',$domain))
             {
                 $url='https://'.$domain.'/.well-known/webfinger?resource=acct:'.$name.'@'.$domain;
-                if ($user)
-                    $idcache=$user->id."-".$url;
-                else
-                    $idcache=$url;
+                $idcache=$url;
                 $actor=Cache::get($idcache);
                 if (!$actor)
                     $actor=self::GetUrlFirmado($user,$url);
-                    
                 if ($actor)
                 {
-                    Cache::put($idcache,$actor,3600*24);
+                    Cache::put($idcache,$actor,3600*24*30);
                     $url=false;
                     if (isset($actor['links']))
                     foreach ($actor['links'] as $link)
@@ -123,6 +168,8 @@ class ActivityPub
                     if ($url)
                     {
                         $actor=self::GetActorByUrl($user,$url);
+                        if (!(isset($actor['error'])))
+                            Cache::put($dica,$actor,3600*24*15);
                         return $actor;
                     }
                 }
@@ -151,8 +198,6 @@ class ActivityPub
             'object' => $actor['id']
         ];
         $activity=json_encode($activity);
-        Log::info('inbox: '.$actor['inbox']);
-        #Log::info(print_r($activity,1));
         $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
         if (((string)$response)[0]!='2')
         {            
@@ -213,6 +258,7 @@ class ActivityPub
 
     static function GetOutbox($user,$actor,$limite=50)
     {
+
         if (!(isset($actor['outbox'])))
             return false;
         $outbox=$actor['outbox'];
@@ -256,6 +302,7 @@ class ActivityPub
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
                 $col=self::GetObjectByUrl($user,$col['first']);
+                Log::info(print_r($col,1));
                 if (isset($col['error']))
                 {
                     if ($solocount) return "?";
@@ -265,6 +312,8 @@ class ActivityPub
                     $items=$col['items'];
                 else
                     $items=[];
+                if (isset($col['orderedItems']))
+                    $items=$col['orderedItems'];
                 while (isset($col['next']))
                 {
                     $col=self::GetObjectByUrl($user,$col['next'],10);
@@ -280,6 +329,17 @@ class ActivityPub
                                 $items[]=$i;
                             else
                                 $items[]=$i['id'];
+                        }
+                    if (isset($col['orderedItems']))
+                        foreach ($col['orderedItems'] as $i)
+                        {
+                            if (is_string($i))
+                                $items[]=$i;
+                            else
+                            {
+                                $items[]=$i['id'];
+                                Cache::Put($i['id'],$i,60*60*24);
+                            }
                         }
                     if ($solocount)
                     if (count($items)>10000) 
@@ -342,7 +402,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                     'actor' => route('activitypub.actor', ['slug' => $user->slug]),
                     'object' => $activity['id']
                 ];
-                Queue::push(new EnviarActividad($user,$actor['id'],$activity));
+                Queue::push(new EnviarActividadToActor($user,$actor['id'],$activity));
                 return response()->json(['message' => 'Follow request received'],202);
             case 'Undo':
             {
@@ -571,7 +631,12 @@ Este es un ejemplo de lo que nos hemos encontrado
             Log::info('resX '.$url."\n".print_r($response,1));
             list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
             Log::info("body $responseBody".print_r(json_decode($response,1),1));
-            return json_decode($responseBody,1);
+            $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $res=json_decode($responseBody,1);
+            if (is_array($res))
+            if (!(array_is_list($res)))
+                $res['codhttp']=$codigo;
+            return $res;
         }
 
         $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET
@@ -585,11 +650,25 @@ Este es un ejemplo de lo que nos hemos encontrado
             $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
             Log::info('error curl',[curl_errno($ch),curl_error($ch),$codigo]);
             Log::info('dio error '.print_r($headers,1));
-            return ['error'=>curl_error($ch),'errorhttp'=>$codigo];
+            return ['error'=>curl_error($ch),'codhttp'=>$codigo,'errorcurl'=>curl_errno($ch)];
         }
         curl_close($ch);
         list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-        return json_decode($responseBody,1); // Devolver el cuerpo de la respuesta
+        /* * /
+        echo "\n\n\n\n ---- $url\n\n $response";
+
+        echo "\n\n\n\n";
+        /* */
+        $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $res=json_decode($responseBody,1);
+        if (is_array($res))
+            if (!(array_is_list($res)))
+                $res['codhttp']=$codigo;
+        if (is_null($res))
+        {
+            $res=['error'=>$responseBody,'codhttp'=>$codigo];
+        }
+        return $res;
     }
 
 

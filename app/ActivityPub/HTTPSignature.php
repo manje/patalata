@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
 class HTTPSignature {
 
 
-  public static function sign(User &$user, $activity,$inbox) { // } $url-inbox, $body-actividad=false, $addlHeaders=[]) {
+  public static function sign(&$user, $activity,$inbox) { // } $url-inbox, $body-actividad=false, $addlHeaders=[]) {
     $digest = false;
     if ($activity)
     $digest=self::_digest($activity);

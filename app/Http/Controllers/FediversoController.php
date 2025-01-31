@@ -21,11 +21,11 @@ class FediversoController extends Controller
      * Display a listing of the resource.
      */
 
-    public $user;
+    public $identidad;
     public function index()
     {
-        $this->user=Auth::user();        
-        return view('fediverso.fediverso',['userfediverso'=>$this->user]);
+        $this->identidad=Auth::user();        
+        return view('fediverso.fediverso',['userfediverso'=>$this->identidad]);
     }
 
     /**
@@ -33,13 +33,14 @@ class FediversoController extends Controller
      */
     public function profile(Request $request, string $slug)
     {
-        $this->user=Auth::user();        
+        $this->identidad=ActivityPub::GetIdentidad();        
         $name=explode("@",$slug);
-        if (count($name)==1)
+        if (count($name)==1) $name[1]=$request->getHost();
+        $slug=$name[0].'@'.$name[1];
+        /*
+        if (count($name)==100000)
         {
             Log::info("slug profile $slug");
-            $user=User::where('slug',$slug)->first();
-
             if (!$user)
             {
                 Log::info("404");
@@ -51,11 +52,6 @@ class FediversoController extends Controller
                     return response()->json($user->GetActivity());
                 else
                 {
-                    /*
-                    $bloqueado=Block::where('actor',$user->GetActivity()['id'])->where('object',$this->user->GetActivity()['id'])->first();
-                    $tehabloqueado=
-                    return view('fediverso.profile', ['actor' => $user->GetActivity(),'userfediverso'=>$this->user]);
-                    */
                 }   
                 $name[0]=$slug;
                 // host de la app
@@ -63,16 +59,17 @@ class FediversoController extends Controller
                 $slug=$name[0].'@'.$name[1];
             }
         }
+        */
         if (count($name)==2)
         {
-            $actor=ActivityPub::GetActorByUsername($this->user,$slug);
+            $actor=ActivityPub::GetActorByUsername($this->identidad,$slug);
             if (!$actor)
             {
                 return response()->json('Usuario no encontrado', 404);
             }
-            $bloqueado=Block::where('actor',$this->user->GetActivity()['id'])->where('object',$actor['id'])->first();
-            $tehabloqueado=Block::where('actor',$actor['id'])->where('object',$this->user->GetActivity()['id'])->first();
-            return view('fediverso.profile', ['actor' => $actor,'bloqueado'=>$bloqueado,'tehabloqueado'=>$tehabloqueado,'userfediverso'=>$this->user]);
+            $bloqueado=Block::where('actor',$this->identidad->GetActivity()['id'])->where('object',$actor['id'])->first();
+            $tehabloqueado=Block::where('actor',$actor['id'])->where('object',$this->identidad->GetActivity()['id'])->first();
+            return view('fediverso.profile', ['actor' => $actor,'bloqueado'=>$bloqueado,'tehabloqueado'=>$tehabloqueado,'identidad'=>$this->identidad]);
         }
         return response()->json('Usuario no encontrado', 404);
     }

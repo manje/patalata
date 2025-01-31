@@ -9,11 +9,31 @@ use Laravel\Jetstream\Events\TeamUpdated;
 use Laravel\Jetstream\Team as JetstreamTeam;
 use Illuminate\Support\Str; // Importar la clase Str
 use phpseclib3\Crypt\RSA;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use Storage;
+use App\Traits\ModelFedi;
+
 
 class Team extends JetstreamTeam
 {
     /** @use HasFactory<\Database\Factories\TeamFactory> */
     use HasFactory;
+    use ModelFedi;
+
+    public $APtype='Person';
+
+    protected $appends = [
+        'profile_photo_url',
+    ];
+
+
+    public function getProfilePhotoUrlAttribute()
+    {
+        if ($this->profile_image)
+            return Storage::disk('public')->url($this->profile_image);
+        return null;
+    }
+
 
     /**
      * The attributes that are mass assignable.
@@ -23,7 +43,8 @@ class Team extends JetstreamTeam
     protected $fillable = [
         'name',
         'personal_team',
-        'profile_image'
+        'profile_image',
+        'slug'
     ];
     protected $hidden = [
         'private_key'
@@ -56,7 +77,6 @@ class Team extends JetstreamTeam
     {
         parent::boot();
         static::creating(function ($team) {
-            $team->slug = static::generateUniqueSlug($team->name);
             $keyPair = RSA::createKey(2048); // Tamaño de clave recomendado: 2048 bits
             $publicKey = $keyPair->getPublicKey()->toString('PKCS8');
             $privateKey = $keyPair->toString('PKCS8');
@@ -65,13 +85,6 @@ class Team extends JetstreamTeam
         });
     }
 
-    public static function generateUniqueSlug($name)
-    {
-        $slug = Str::slug($name);
-        $count = Team::where('slug', 'LIKE', "$slug%")->count()
-            + User::where('slug', 'LIKE', "$slug%")->count();
-        return $count ? "{$slug}-{$count}" : $slug;
-    }
-
+ 
 
 }

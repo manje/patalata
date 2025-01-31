@@ -27,7 +27,19 @@
                 </div>
             </div>
 
-            <livewire:provincia-municipio-selector />
+            <div class="mt-4">
+                <x-label for="place" value="{{ __('Localidad') }}" />
+                <!-- Desplegable de localidades -->
+                <select id="place" name="place" class="block mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="" selected disabled>{{ __('Seleccione una localidad') }}</option>
+                    @foreach($places as $place)
+                        <option value="{{ $place->id }}" {{ old('place') == $place->id ? 'selected' : '' }}>
+                            {{ $place->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
 
             <div class="mt-4">
                 <x-label for="password" value="{{ __('Password') }}" />

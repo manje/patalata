@@ -28,6 +28,7 @@ trait ModelFedi
             Log::info("tipo: ".$model->APtype." act ".$model->actor);
             if ($model->APtype!='Person')
             {
+                Log::info("slug - id ");
                 if (!$model->slug) $model->slug=$model->id;
                 $model->distribute();
                 // creo objeto Outbox
@@ -101,13 +102,17 @@ trait ModelFedi
                     'id' => route('activitypub.actor', ['slug' => $this->slug]) . '#main-key',
                     'owner' => route('activitypub.actor', ['slug' => $this->slug]),
                     'publicKeyPem' => $this->public_key,
-                ],
-                'icon' => [
+                ]
+        
+            ];
+            if ($this->profile_photo_url)
+            {
+                $activity['icon'] = [
                     'type' => 'Image',
                     'mediaType' => 'image/png',
                     'url' => $this->profile_photo_url,
-                ],
-            ];
+                ];
+            }
         }
     
 

@@ -20,7 +20,7 @@ class Seguir extends Component
 
     public function siguiendo()
     {
-        $user=auth()->user();
+        $user=ActivityPub::GetIdentidad();
         if ($user)
             return ActivityPub::siguiendo($user, $this->actor);
         return false;
@@ -28,7 +28,7 @@ class Seguir extends Component
 
     public function dejarDeSeguir()
     {
-        $user=auth()->user();
+        $user=ActivityPub::GetIdentidad();
         if ($user)
             if (ActivityPub::dejarDeSeguir($user, $this->actor))
                 $this->siguiendo=false;
@@ -36,7 +36,7 @@ class Seguir extends Component
 
     public function seguir()
     {
-        $user=auth()->user();
+        $user=ActivityPub::GetIdentidad();
         if ($user)
             if (ActivityPub::seguir($user, $this->actor))
                 $this->siguiendo=true;

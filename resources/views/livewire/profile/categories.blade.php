@@ -8,12 +8,31 @@
     </x-slot>
     <x-slot name="form">
         <div class="col-span-6 sm:col-span-4">
-            @livewire('provincia-municipio-selector', ['provinciaName' => 'provincia_id', 'municipioName' => 'municipio_id', 'selectedProvincia' => Auth::user()->municipio->cpro, 'selectedMunicipio' => Auth::user()->municipio_id, 'required' => true])
-        </div>
-        <div class="col-span-6 sm:col-span-4">
+    
+
+            <div class="my-4">
+                <x-label for="place_id" value="{{ __('Localidad') }}" />
+                <!-- Desplegable de localidades -->
+                <select id="place_id" name="place_id" 
+                    wire:model="place_id"
+                    class="block mt-1 w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="" >{{ __('Seleccione una localidad') }}</option>
+                    @foreach($places as $place)
+                        <option value="{{ $place->id }}" {{ old('place_id') == $place->id ? 'selected' : '' }}>
+                            {{ $place->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
             @livewire('categories-selector', ['categoryName' => 'Intereses', 'selectedCategories' => Auth::user()->categories->pluck('id')->toArray()])
+
+
         </div>
+
+
     </x-slot>
+
 
     <x-slot name="actions">
         <x-action-message class="me-3" on="saved">

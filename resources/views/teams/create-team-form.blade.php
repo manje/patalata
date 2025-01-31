@@ -20,11 +20,18 @@
                 </div>
             </div>
         </div>
-
         <div class="col-span-6 sm:col-span-4">
             <x-label for="name" value="{{ __('Team Name') }}" />
             <x-input id="name" type="text" class="mt-1 block w-full" wire:model="state.name" autofocus />
             <x-input-error for="name" class="mt-2" />
+        </div>
+        <div class="col-span-6 sm:col-span-4">
+            <x-label for="slug" value="Username" />
+            <div class="flex items-center">
+                    <span class="px-3 py-2 bg-gray-200 border border-gray-300 rounded-l-md text-gray-600">@</span>
+                <x-input id="slug" type="text" class="mt-1 block w-full" wire:model="state.slug"  />
+            </div>
+            <x-input-error for="slug" class="mt-2" />
         </div>
     </x-slot>
 

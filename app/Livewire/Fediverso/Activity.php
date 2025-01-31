@@ -5,7 +5,6 @@ namespace App\Livewire\Fediverso;
 use Livewire\Component;
 use Livewire\Attributes\On; 
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 
 use App\ActivityPub\ActivityPub;
 use App\Models\Like;
@@ -30,7 +29,7 @@ class Activity extends Component
     public function mount($activity,$diferido=true,$msgrespondiendo=true)
     {
         if ($msgrespondiendo==false) $this->msgrespondiendo=false;
-        $this->user = Auth::user();
+        $this->user = ActivityPub::GetIdentidad();
         if (is_string($activity)) 
             $this->activity = ActivityPub::GetObjectByUrl($this->user,$activity);
         else

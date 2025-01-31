@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use App\Models\Team;
 use App\Models\Nota;
 use App\Models\Post;
 use App\Models\Apfollower;
@@ -30,8 +31,7 @@ class ActivityPubUserController extends Controller
 
     public function getActor($slug): JsonResponse
     {
-        // Busca al usuario por su slug
-        $user = User::where('slug', $slug)->firstOrFail();
+        $user=ActivityPub::GetIdentidadBySlug($slug);
         $actor= $user->GetActivity();
         return response()->json($actor, 200, ['Content-Type' => 'application/activity+json']);
     }
@@ -39,7 +39,7 @@ class ActivityPubUserController extends Controller
     public function inbox(Request $request, $slug): JsonResponse
     {
         // Busca al usuario por su slug
-        $user = User::where('slug', $slug)->firstOrFail();
+        $user=ActivityPub::GetIdentidadBySlug($slug);
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
         if (!$this->verifySignature($user,$activity,$path)) 
@@ -51,7 +51,7 @@ class ActivityPubUserController extends Controller
 
     public function following($slug): JsonResponse
     {
-        $user = User::where('slug', $slug)->firstOrFail();
+        $user=ActivityPub::GetIdentidadBySlug($slug);
         $listado=Apfollowing::where('actor', $user->GetActivity()['id']);
         $url=route('activitypub.following', ['slug' => $user->slug]);
         return $this->Collection($listado,$url);
@@ -60,7 +60,7 @@ class ActivityPubUserController extends Controller
 
     public function followers($slug): JsonResponse
     {
-        $user = User::where('slug', $slug)->firstOrFail();
+        $user=ActivityPub::GetIdentidadBySlug($slug);
         $listado=Apfollower::where('actor', $user->GetActivity()['id']);
         $url=route('activitypub.followers', ['slug' => $user->slug]);
         return $this->Collection($listado,$url);
@@ -110,9 +110,10 @@ class ActivityPubUserController extends Controller
         }
 
         // Busca al usuario por su slug
-        $user = User::where('slug', $slug)->first();
+        Log::info("slug es $slug");
+        $user=ActivityPub::GetIdentidadBySlug($slug);
         if (!$user) {
-            return response()->json(['error' => 'User not found'], 404);
+                return response()->json(['error' => 'User not found'], 404);
         }
 
         // Construye la respuesta WebFinger
@@ -132,7 +133,7 @@ class ActivityPubUserController extends Controller
 
     public function outbox($slug): JsonResponse
     {
-        $user = User::where('slug', $slug)->firstOrFail();
+        $user=ActivityPub::GetIdentidadBySlug($slug);
         $list=Outbox::where('actor', $user->GetActivity()['id']);
         $url=route('activitypub.outbox', ['slug' => $user->slug]);
         return $this->Collection($list,$url);

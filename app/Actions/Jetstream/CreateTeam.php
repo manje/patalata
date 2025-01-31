@@ -23,12 +23,15 @@ class CreateTeam implements CreatesTeams
 
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
-        ])->validateWithBag('createTeam');
+            'slug' => ['required', 'string', 'max:25', 'unique:users', 'unique:teams', 'regex:/^[a-z0-9_]+$/'],
+
+            ])->validateWithBag('createTeam');
 
         AddingTeam::dispatch($user);
-
+        \Illuminate\Support\Facades\Log::info($input['slug']);
         $user->switchTeam($team = $user->ownedTeams()->create([
             'name' => $input['name'],
+            'slug' => $input['slug'],
             'personal_team' => false,
         ]));
 

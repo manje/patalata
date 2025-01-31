@@ -25,7 +25,10 @@ class Timeline extends Component
 
     public function mount($actor=false)
     {
-        $this->actor=$actor;
+        if ($this->actor)
+            $this->actor=$actor;
+        else
+            $this->user=ActivityPub::GetIdentidad();
     }
 
     public function loadMore()
@@ -99,10 +102,11 @@ class Timeline extends Component
 
     public function loadPosts()    
     {
-        $this->user=auth()->user();
         if ($this->actor)
         {
-            $outbox=ActivityPub::GetOutbox($this->user,$this->actor);
+            $outbox=ActivityPub::GetColeccion($this->user,$this->actor['outbox']);
+            Log::info('------798798-');
+            Log::info(print_r($outbox,1));
             if (count($outbox)>50) $list=array_slice($outbox,0,50);
             $this->timeline=$outbox;
             return true;

@@ -8,7 +8,7 @@
             class="input input-bordered w-full"
         />
     </div>
-    <ul class="menu bg-base-100 w-full rounded-box">
+    <ul class="menu bg-base-100 w-full rounded-box text-xl">
     <li>
             <a href="/" class="flex items-center">
                 <i class="fa-solid fa-house mr-2"></i>
@@ -28,8 +28,12 @@
             </a>
         </li>
         <li>
-            <a href="/{{'@'}}{{ Auth::user()->slug }}" class="flex items-center">
+            <a href="/{{'@'}}{{ $identidad->slug }}" class="flex items-center">
+                @if (isset($identidad->GetActivity()['icon']))
+                <img src="{{ $identidad->GetActivity()['icon']['url'] }}" class="w-6 h-6 rounded-full   ">
+                @else
                 <i class="fa-solid fa-user mr-2"></i>
+                @endif
                 Perfil
             </a>
         </li>

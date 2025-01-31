@@ -3,13 +3,16 @@
 namespace App\Livewire\Profile;
 
 use Livewire\Component;
-use Illuminate\Support\Facades\Log;
+
+use App\Models\Place;
 
 class Categories extends Component
 {
-    public $municipio_id;
+    public $place_id;
     public $categories=[];
-    protected $listeners = ['municipioSelected'=>'municipioSelected','changeCategory'=>'changeCategory'];
+    public $places;
+    
+    protected $listeners = ['changeCategory'=>'changeCategory'];
 
     public function municipioSelected($municipio_id)
     {
@@ -26,25 +29,23 @@ class Categories extends Component
 
     public function mount()    
     {
-        $this->municipio_id = auth()->user()->municipio_id;
+        $this->place_id = auth()->user()->place_id;
+        $this->places=Place::all();
         $this->categories=auth()->user()->categories->pluck('id')->toArray();
     }
 
     public function updateMunAndInt()
     {
-        if ($this->municipio_id)
-        {
-            $user=auth()->user();
-            $user->categories()->sync($this->categories);
-            $user->municipio_id=$this->municipio_id;
-            $user->save();
-            $this->dispatch('saved');
-            $this->dispatch('refresh-navigation-menu');
-        }
+        $user=auth()->user();
+        $user->categories()->sync($this->categories);
+        $user->place_id=$this->place_id;
+        $user->save();
+        $this->dispatch('saved');
+        $this->dispatch('refresh-navigation-menu');
     }
 
     public function render()
     {
-        return view('livewire.profile.categories');    
+        return view('livewire.profile.categories');                                                                                                                         
     }
 }
