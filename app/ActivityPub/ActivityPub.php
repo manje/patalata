@@ -13,6 +13,9 @@ use App\Models\Like;
 use App\Models\Announce;
 use App\Models\Block;
 
+
+use Illuminate\Routing\Router;
+
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Auth;
@@ -88,6 +91,16 @@ class ActivityPub
         if (is_array($url)) return $url;
         if(!\p3k\url\is_url($url)) return false;
         $domain=parse_url($url, PHP_URL_HOST);
+        if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
+        {
+            $request = Request::create($url, 'GET');
+            $response = app()->handle($request);
+            $status = $response->getStatusCode();
+            $body = $response->getContent();
+            $out=json_decode($body,true);
+            if ($out) return $out;
+        }
+        
         $idbantmp="idbantmp $domain";
         if ($out=Cache::get($idbantmp))
         {

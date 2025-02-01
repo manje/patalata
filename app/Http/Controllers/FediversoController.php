@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 use App\Models\User;
+use App\Models\Team;
 use App\Models\Timeline;
 use App\Models\Block;
 use App\ActivityPub\ActivityPub;
@@ -22,9 +23,21 @@ class FediversoController extends Controller
      */
 
     public $identidad;
-    public function index()
+    public function index(Request $request)
     {
-        $this->identidad=Auth::user();        
+        if ($request->has('user')) 
+        {
+            $u=(int)$request->get('user');
+            $team=Team::find($u);
+            $user=Auth::user();
+            if ($team)
+                $user->switchTeam($team);
+            else
+            $user->forceFill([
+                'current_team_id' => null,
+            ])->save();
+            }
+        $this->identidad=ActivityPub::GetIdentidad();        
         return view('fediverso.fediverso',['userfediverso'=>$this->identidad]);
     }
 

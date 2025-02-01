@@ -34,14 +34,50 @@
                 @else
                 <i class="fa-solid fa-user mr-2"></i>
                 @endif
-                Perfil
+                {{'@'}}{{ $identidad->slug }}
             </a>
         </li>
     </ul>
     <div class="mt-4">
         <livewire:fediverso.create />
     </div>
+    @if (Auth::user()->allTeams()->count() > 0)
 
+        <div class="mt-4" x-data='{showlist: false}'>
+            <button class="flex items-center btn w-full" x-on:click="showlist = !showlist">
+            <i class="fa fa-refresh" aria-hidden="true"></i>
+                Cambiar de cuenta
+            </button>
+            <div x-show="showlist">
+                <a href='{{ route('fediverso.index') }}/?user=0'>
+                    <div class='flex flex-items border py-2 mt-2 cursor-pointer'>
+                            <div class='mx-4'>
+                                @if (Auth::user()->profile_photo_url)
+                                    <img src="{{ Auth::user()->profile_photo_url }}" class="w-6 h-6 rounded-full">
+                                @else
+                                    <i class="fa-solid fa-user mr-2"></i>
+                                @endif
+                            </div>
+                            {{ Auth::user()->name }}
+                    </div>
+                </a>
+                @foreach (Auth::user()->allTeams() as $team)
+                    <a href='{{ route('fediverso.index') }}/?user={{ $team->id }}'>
+                        <div class='flex flex-items border py-2 mt-2 cursor-pointer'>
+                            <div class='mx-4'>
+                                @if ($team->getProfilePhotoUrlAttribute())
+                                    <img src="{{ $team->getProfilePhotoUrlAttribute() }}" class="w-6 h-6 rounded-full">
+                                @else
+                                    <i class="fa-solid fa-user mr-2"></i>
+                                @endif
+                            </div>
+                            {{ $team->name }}
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    @endif
 
 
 </div>
