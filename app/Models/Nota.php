@@ -15,11 +15,9 @@ class Nota extends Model
 
     use ModelFedi;
     public $APtype='Note';
-    public $APtranslate=['summary'=>'name'];
-
 
     protected $fillable = [
-        'user_id', 'team_id', 'municipio_id', 'content',
+        'user_id', 'team_id', 'municipio_id', 'content','sensitive','summary',
         'cover', 'slug'
     ];
 

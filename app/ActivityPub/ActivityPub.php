@@ -31,13 +31,13 @@ use HTMLPurifier;
 use HTMLPurifier_Config;
 use DateTime;
 
-
 class ActivityPub 
 {
 
     static function GetIdentidad()
     {
         $user=Auth::user();
+        if (!$user) return false;
         if ($user->current_team_id)
         {
             $team=Team::find($user->current_team_id);
@@ -93,21 +93,21 @@ class ActivityPub
         {
           return $out;
         }
-
-        #if ($out=Cache::get($url)) return $out;
+        if ($out=Cache::get($url)) return $out;
         $idca="$domain ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
         #echo "    $num   ";
-        if ($num++>250) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
+        if ($num++>200) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
         $out=self::GetUrlFirmado($user,$url);
         if (!(is_array($out)))
         {
-            $out=['error'=>$out];
+            $out=['error'=>"No es array: $url - $out"];
             Cache::put($url,$out,120);
             return $out;
         }
-        if ($out['codhttp']==429)
+        if (isset($out['codhttp']))
+            if ($out['codhttp']==429)
         {
             $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
             Cache::put($idbantmp,$out,60);
@@ -301,8 +301,8 @@ class ActivityPub
         {
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
+                $x=$col['first'];
                 $col=self::GetObjectByUrl($user,$col['first']);
-                Log::info(print_r($col,1));
                 if (isset($col['error']))
                 {
                     if ($solocount) return "?";
@@ -411,7 +411,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                         Apfollower::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Follow request received'],202);
                     case 'Announce':
-                        Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->where('user_id', $user->id)->delete();
+                        Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->delete();
                         Announce::where('actor',$activity['actor'])->where('object',$activity['object']['object'])->delete();
                         return response()->json(['message' => 'Undo request received'],202);
                     case 'Like':
@@ -477,8 +477,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                         return response()->json(['message' => 'Bad Request'],400);
                     }
                     $line= new Timeline();
-                    if ($user instanceof User) $line->user_id=$user->id;
-                    if ($user instanceof Team) $line->team_id=$user->id;
+                    $line->user=$user->GetActivity()['id'];
                     $line->actor_id=$activity['actor'];
                     $line->activity=$activity["object"]['id'];
                     // guardo en cache la actividad
@@ -502,8 +501,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 if ($seguido)
                 {
                     $line= new Timeline();
-                    if ($user instanceof User) $line->user_id=$user->id;
-                    if ($user instanceof Team) $line->team_id=$user->id;
+                    $line->user=$user->GetActivity()['id'];
                     $line->activity=$activity['id'];
                     $line->actor_id=$activity['actor'];
                     Cache::put($activity['id'],$activity,3600*8);
@@ -537,7 +535,6 @@ Este es un ejemplo de lo que nos hemos encontrado
                 if ($activity['actor']==$activity['object'])
                 {
                     Cache::put($activity['object'],['error'=>'Deleted'],3600*24*30);
-                    Cache::put($user->id.'-'.$activity['object'],['error'=>'Deleted'],3600*24*30);
                     TimeLine::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
                     return response()->json(['message' => 'Accepted'],202);
                 }
@@ -547,7 +544,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                     return response()->json(['message' => 'Accepted'],202);
                 }
                 Log::info('Petición de Delete '.print_r($activity,1));
-                return response()->json(['message' => 'No implementado'],501);
+                return response()->json(['message' => 'Accepted'],202);
             }
             case 'Update':
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
@@ -559,10 +556,9 @@ Este es un ejemplo de lo que nos hemos encontrado
                     {
                         Cache::forget($activity['object']['id']);
                         Cache::forget($user->id.'-'.$activity['object']['id']);
-                        Timeline::where('activity', $activity['object']['id'])->where('actor_id',$activity['actor'])->delete();
+                        Timeline::where('activity', $activity['object']['id'])->where('actor_id',$activity['actor'])->where('user',$user->GetActivity()['id'])->delete();
                         $line= new Timeline();
-                        if ($user instanceof User) $line->user_id=$user->id;
-                        if ($user instanceof Team) $line->team_id=$user->id;
+                        $line->user=$user->GetActivity()['id'];
                         $line->actor_id=$activity['actor'];
                         $line->activity=$activity["object"]['id'];
                         Cache::put($activity["object"]['id'],$activity["object"],3600*8);
@@ -594,10 +590,8 @@ Este es un ejemplo de lo que nos hemos encontrado
         curl_setopt($ch, CURLOPT_POSTFIELDS, $json);
         curl_setopt($ch, CURLOPT_HEADER, true);
         $response = curl_exec($ch);
-        Log::info("res $response");
         $response=json_decode($response, true);
         $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        Log::info("cdigo EA $codigo");
         return $codigo;
     }
 
@@ -606,7 +600,7 @@ Este es un ejemplo de lo que nos hemos encontrado
         if(!\p3k\url\is_url($url)) return false; 
         if (!($user))
         {
-            Log::info($user);
+            Log::info("no user");
             // La misma petición pero sin firmar
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -614,10 +608,7 @@ Este es un ejemplo de lo que nos hemos encontrado
             curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
             $date = new DateTime('UTC');
             $headers = [
-                #'(request-target)' => 'get '.parse_url($url, PHP_URL_PATH),
-                #'Date' => $date->format('D, d M Y H:i:s \G\M\T'),
-                #'Host' => parse_url($url, PHP_URL_HOST),
-                'Accept' => 'application/jrd+json, application/ld+json, application/json' ,
+                'Accept' => 'application/activity+json, application/ld+json, application/json' ,
                 'Content-Type' => 'application/json',
             ];
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -628,9 +619,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 return ['error'=>curl_error($ch),'errorhttp'=>$codigo];
             }
             curl_close($ch);
-            Log::info('resX '.$url."\n".print_r($response,1));
             list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-            Log::info("body $responseBody".print_r(json_decode($response,1),1));
             $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
             $res=json_decode($responseBody,1);
             if (is_array($res))

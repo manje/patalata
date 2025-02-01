@@ -229,7 +229,7 @@ wire:init="load"
         @if ($activity['type']!='Announce')
             @if (isset($activity['attachment']))
                 @foreach ($activity['attachment'] as $media)
-                    <div>
+                    <div x-show="!oculto">
                         @if (isset($media['mediaType']))
                             @switch ($media['mediaType'])
                                 @case ('image/jpeg')

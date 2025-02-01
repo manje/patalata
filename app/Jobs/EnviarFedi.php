@@ -72,9 +72,11 @@ class EnviarFedi implements ShouldQueue
     }
 
 
+    /*
     public function retryUntil(): DateTime
     {
         return now()->addDays(2);
     }
+    */
 
 }

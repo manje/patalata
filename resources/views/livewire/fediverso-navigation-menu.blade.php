@@ -39,12 +39,7 @@
         </li>
     </ul>
     <div class="mt-4">
-        <textarea 
-            class="textarea textarea-bordered w-full" 
-            placeholder="¿Qué estás pensando?"></textarea>
-        <button class="btn btn-primary mt-2 w-full">
-            Publicar
-        </button>
+        <livewire:fediverso.create />
     </div>
 
 

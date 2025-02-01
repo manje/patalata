@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Team;
 use App\Models\Post;
 use App\Models\Outbox;
+use App\Models\Apfile;
 
 use Illuminate\Support\Facades\Log;
 
@@ -26,7 +27,9 @@ trait ModelFedi
     {
         static::created(function ($model) {
             Log::info("tipo: ".$model->APtype." act ".$model->actor);
-            if ($model->APtype!='Person')
+
+            $validos=['Note','Article','Announce','Question'];
+            if (in_array($model->APtype,$validos))
             {
                 Log::info("slug - id ");
                 if (!$model->slug) $model->slug=$model->id;
@@ -83,6 +86,14 @@ trait ModelFedi
         if (isset($this->APtranslate))
             foreach ($this->APtranslate as $key => $value)
                 $this->$key = $this->$value;
+        $conuser=['Note','Article','Question','Event'];
+        if (in_array($this->APtype,$conuser))
+        {
+            if ($this->team_id)
+                $user=Team::find($this->team_id);
+            else
+                $user=User::find($this->user_id);
+        }
         $activity=false;
         if ($this->APtype=='Person')
         {
@@ -115,15 +126,34 @@ trait ModelFedi
             }
         }
     
+        $contexto=[
+            'https://www.w3.org/ns/activitystreams',
+            [
+                    'ostatus' => 'http://ostatus.org#',
+                    #'atomUri' => 'ostatus:atomUri',
+                    #'inReplyToAtomUri' => 'ostatus:inReplyToAtomUri',
+                    #'conversation' => 'ostatus:conversation',
+                    'sensitive' => 'as:sensitive',
+                    'toot' => 'http://joinmastodon.org/ns#',
+                    #'votersCount' => 'toot:votersCount',
+                    #'blurhash' => 'toot:blurhash',
+                    #'focalPoint' => 'Array',
+                    #    (
+                    #        [@container] => @list
+                    #        [@id] => toot:focalPoint
+                    #    )
 
+                    # [Hashtag] => as:Hashtag
+
+            ]
+        ];
 
 
         if ($this->APtype=='Article')
         {
             $idmodelo=Str::plural(Str::lower(class_basename($this)));
-            $user = User::find($this->user_id);
             $activity = [
-                '@context' => 'https://www.w3.org/ns/activitystreams',
+                '@context' => $contexto,
                 'type' => 'Article',
                 'id' => Route($idmodelo.'.show', ['slug' => $this->slug]),
                 'url' => Route($idmodelo.'.show', ['slug' => $this->slug]),
@@ -133,16 +163,17 @@ trait ModelFedi
                 'published' => $this->created_at->toIso8601String(),
                 'updated' => $this->updated_at->toIso8601String(),
                 'summary' => $this->summary,
+                'sensitive' => $this->sensitive,
                 'content' => $this->content,
                 'mediaType' => 'text/html',
+                'attachment' => $this->getActivityPubAttachments()
             ];
-            if ($this->cover)
+            $at=$this->getActivityPubAttachments();
+            if (count($at)>0) $activity['attachment'] = $at;
+            if ($this->sensitive)
             {
-                $activity['attachment'] = [
-                    'type' => 'Image',
-                    'mediaType' => 'image/jpeg',
-                    'url' => asset('storage/'.$this->cover)
-                ];
+                $activity['sensitive'] = true;
+                $activity['summary'] = $this->summary;
             }
         }
 
@@ -163,9 +194,8 @@ trait ModelFedi
         if ($this->APtype=='Note')
         {
             $idmodelo=Str::plural(Str::lower(class_basename($this)));
-            $user = User::find($this->user_id);    
             $activity = [
-                '@context' => 'https://www.w3.org/ns/activitystreams',
+                '@context' => $contexto,
                 'type' => 'Note',
                 'id' => Route($idmodelo.'.show', ['slug' => $this->slug]),
                 'url' => Route($idmodelo.'.show', ['slug' => $this->slug]),
@@ -174,18 +204,12 @@ trait ModelFedi
                 // 'cc' => Aquí necesitamos un endpoint para los seguidores de este usuario
                 'published' => $this->created_at->toIso8601String(),
                 'updated' => $this->updated_at->toIso8601String(),
+                'sensitive' => $this->sensitive,
+                'summary' => $this->summary,
                 'content' => $this->content,
                 'mediaType' => 'text/html',
+                'attachment' => $this->getActivityPubAttachments()
             ];
-            if ($this->cover)
-            {
-                $activity['attachment'] = [];
-                $activity['attachment'][] = [
-                    'type' => 'Image',
-                    'mediaType' => 'image/jpeg',
-                    'url' => asset('storage/'.$this->cover)
-                ];
-            }
         }
         if ($this->APtype=='Block')
         {
@@ -203,16 +227,17 @@ trait ModelFedi
 
     public function distribute($activity=false)
     {
+        if ($this->team_id)
+            $user=Team::find($this->team_id);
+        else
+            $user=User::find($this->user_id);
         if (($this->APtype=='Announce') || ($this->APtype=='Block') )
         {
             Log::info('comprobamos si la actividad está creada por nuestra instancia');
             // Solo distribuimos los impulsos que sean creados en local
             if  ( parse_url(config('app.url'), PHP_URL_HOST) != parse_url($this->actor, PHP_URL_HOST))
                 return false;
-            Log::info('distribuye '.$this->APtype.' porque no es recibido');
-
-
-
+            Log::info('distribuye '.$this->APtype.' porque no es recibido, lo crea un usuario local');
             $slug=explode('/',$this->actor);
             $slug=$slug[count($slug)-1];
             $user=$this->SlugToUser($slug);
@@ -221,18 +246,9 @@ trait ModelFedi
             {
                 // los bloqueos no se distribuyen a los seguidores
                 Queue::push(new EnviarActividadToActor($user,$this->object,$this->GetActivity()));
+                return true;
             }
-
-            
         }
-        else
-        {
-            if ($this->team_id)
-              $user=Team::find($this->team_id);
-            else
-              $user=User::find($this->user_id);
-        }
-        Log::info('envio dist');
         if ($activity)
             $mod=false;
         else
@@ -241,6 +257,7 @@ trait ModelFedi
             Log::info("se envia por activity");
         else
             Log::info("se envia por model");
+        Log::info("el user es ".$user->slug);
         Queue::push(new DistribuirFedi($mod,$user,$activity));
     }
 
@@ -282,6 +299,41 @@ trait ModelFedi
         if (!$res->onFirstPage())
             $col['prev'] = $res->previousPageUrl(); // URL para la página anterior
         return response()->json($col, 200, ['Content-Type' => 'application/activity+json']);
+    }
+
+    // attachments
+
+
+
+    public function apfiles()
+    {
+        return $this->morphMany(Apfile::class, 'apfileable');
+    }
+
+    public function getActivityPubAttachments(): array
+    {
+        return $this->apfiles->map(function ($file) {
+            return [
+                #'type' => $this->getApfileType($file->file_type),
+                'type' => 'Document',
+                'mediaType' => $file->file_type,
+                'url' => asset("storage/{$file->file_path}"),
+                'name'=> $file->alt_text,
+                'summary'=> $file->alt_text,
+                'blurhash'=>'UFO|U[~pM{t89F?bWBM|t7WBRjt7xuWCofRj'
+                    
+            ];
+        })->toArray();
+    }
+
+    private function getApfileType(string $mimeType): string
+    {
+        return match (true) {
+            str_starts_with($mimeType, 'image/') => 'Image',
+            str_starts_with($mimeType, 'video/') => 'Video',
+            str_starts_with($mimeType, 'audio/') => 'Audio',
+            default => 'Document',
+        };
     }
 
 

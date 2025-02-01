@@ -13,7 +13,6 @@
                     </a>
                     <div class="text-white text-sm">
                         <span>{{ \Carbon\Carbon::parse($nota->fecha_inicio)->format('d M, H:s') }}</span> - 
-                        <span> {{ $nota->municipio->nombre }} ({{ $nota->municipio->provincia }})</span>
                     </div>
                     </div>
                 </div>

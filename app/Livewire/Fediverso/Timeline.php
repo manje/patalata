@@ -27,8 +27,7 @@ class Timeline extends Component
     {
         if ($this->actor)
             $this->actor=$actor;
-        else
-            $this->user=ActivityPub::GetIdentidad();
+        $this->user=ActivityPub::GetIdentidad();
     }
 
     public function loadMore()
@@ -36,7 +35,7 @@ class Timeline extends Component
         if ($this->actor) return true;
         if ($this->user)
         {
-            $list=TL::where('user_id',$this->user->id)->where('id','<', $this->ultimo)->orderBy('created_at', 'desc')->take(5)->get();
+            $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(5)->get();
             foreach ($list as $item)
             {
                 $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
@@ -79,12 +78,12 @@ class Timeline extends Component
         if ($this->primero)
         {
             # nº nuevas, count
-            $list=TL::where('user_id',$this->user->id)->where('id','>', $this->primero->id)->count();
+            $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','>', $this->primero->id)->count();
             if ($list>0)
             {
                 $this->siguienteprimero=false;
                 $this->nuevas=$list;
-                $list=TL::where('user_id',$this->user->id)->where('id','>', $this->primero->id)->orderBy('created_at', 'desc')->take($list)->get();
+                $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','>', $this->primero->id)->orderBy('id', 'desc')->take($list)->get();
                 $this->nuevaslist=[];
                 foreach ($list as $item)
                 {
@@ -105,16 +104,18 @@ class Timeline extends Component
         if ($this->actor)
         {
             $outbox=ActivityPub::GetColeccion($this->user,$this->actor['outbox']);
-            Log::info('------798798-');
-            Log::info(print_r($outbox,1));
             if (count($outbox)>50) $list=array_slice($outbox,0,50);
             $this->timeline=$outbox;
+            foreach ($this->timeline as $k=>$v)
+            {
+                if (is_string($v)) $this->timeline[$k]=ActivityPub::GetObjectByUrl($this->user,$v);
+            }
             return true;
         }
         if ($this->user)
         {
             $this->primero=false;
-            $list=TL::where('user_id',$this->user->id)->orderBy('id','desc')->take($this->numactividades)->get();
+            $list=TL::where('user',$this->user->GetActivity()['id'])->orderBy('id','desc')->take($this->numactividades)->get();
             if (count($list)==0)
                 $this->timeline=[];
             else

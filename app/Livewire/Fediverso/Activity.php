@@ -166,7 +166,6 @@ class Activity extends Component
                 'object'=>$this->activity['id']
             ];
             $res=ActivityPub::EnviarActividadPOST($this->user,json_encode($activity),$this->activity['attributedTo']['inbox']);
-            Log::info('res '.print_r($res,1));
             $res="$res";
             if ($res[0]!='2')
             {
@@ -198,6 +197,9 @@ class Activity extends Component
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')
+        if (isset($this->activity['attachments']))
+            if (count($this->activity['attachments'])>0)
+                Log::info(print_r($this->activity['attachments'],1));
         if (!(isset($this->activity['id']))) 
             Log::info(print_r($this->activity,1));
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";

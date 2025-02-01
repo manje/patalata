@@ -10,21 +10,8 @@ class Timeline extends Model
     use HasFactory;
 
     protected $fillable = [
-        'user_id',
-        'team_id',
+        'user',
         'activity',
         'actor',
     ];
-
-    // Relación con el modelo User
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
-
-    // Relación con el modelo Team
-    public function team()
-    {
-        return $this->belongsTo(Team::class);
-    }
 }

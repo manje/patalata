@@ -55,10 +55,7 @@ function loadMore() {
     let scrollTop = window.scrollY || document.documentElement.scrollTop;
     let clientHeight = window.innerHeight;
     let scrollHeight = document.documentElement.scrollHeight;
-    console.log(scrollTop, clientHeight, scrollHeight);
     if (scrollTop + clientHeight >= scrollHeight) {
-        console.log("Has llegado al final de la página");
-        // Aquí puedes emitir un evento a Livewire
         Livewire.dispatch('loadMore');
     }
 }
