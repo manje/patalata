@@ -110,7 +110,7 @@ class ActivityPub
         $idca="$domain ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
         #echo "    $num   ";
-        if ($num++>200) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
+        if ($num++>100) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
         $out=self::GetUrlFirmado($user,$url);
         if (!(is_array($out)))
@@ -613,12 +613,10 @@ Este es un ejemplo de lo que nos hemos encontrado
         if(!\p3k\url\is_url($url)) return false; 
         if (!($user))
         {
-            Log::info("no user");
-            // La misma petición pero sin firmar
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
-            curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
+            curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net');
             $date = new DateTime('UTC');
             $headers = [
                 'Accept' => 'application/activity+json, application/ld+json, application/json' ,
@@ -626,51 +624,33 @@ Este es un ejemplo de lo que nos hemos encontrado
             ];
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             $response = curl_exec($ch);
-            if (curl_errno($ch)) {
+        }
+        else
+        {
+	        $headers = HTTPSignature::sign($user, false, $url);
+	        $ch = curl_init($url);
+	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+	        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+	        curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net');
+	        curl_setopt($ch, CURLOPT_HEADER, true);
+	        $response = curl_exec($ch);
+        }
+        if (curl_errno($ch)) {
                 Log::info('error curl',[curl_errno($ch),curl_error($ch)]);
                 $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
-                return ['error'=>curl_error($ch),'errorhttp'=>$codigo];
-            }
-            curl_close($ch);
-            list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-            $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $res=json_decode($responseBody,1);
-            if (is_array($res))
+                return ['error'=>curl_error($ch),'errorhttp'=>$codigo,'errorcurl'=>curl_errno($ch)];
+        }
+        curl_close($ch);
+        list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
+        $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $res=json_decode($responseBody,1);
+        if (is_array($res))
+        {
             if (!(array_is_list($res)))
                 $res['codhttp']=$codigo;
             return $res;
         }
-
-        $headers = HTTPSignature::sign($user, false, $url); // Usamos una cadena vacía como cuerpo para GET
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); // Aplicar los encabezados firmados
-        curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net'); // Agent
-        curl_setopt($ch, CURLOPT_HEADER, true); // Incluir los encabezados en la respuesta
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            Log::info('error curl',[curl_errno($ch),curl_error($ch),$codigo]);
-            Log::info('dio error '.print_r($headers,1));
-            return ['error'=>curl_error($ch),'codhttp'=>$codigo,'errorcurl'=>curl_errno($ch)];
-        }
-        curl_close($ch);
-        list($responseHeaders, $responseBody) = explode("\r\n\r\n", $response, 2);
-        /* * /
-        echo "\n\n\n\n ---- $url\n\n $response";
-
-        echo "\n\n\n\n";
-        /* */
-        $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $res=json_decode($responseBody,1);
-        if (is_array($res))
-            if (!(array_is_list($res)))
-                $res['codhttp']=$codigo;
-        if (is_null($res))
-        {
-            $res=['error'=>$responseBody,'codhttp'=>$codigo];
-        }
-        return $res;
+        return ['error'=>"$url no es un application/activity+json",'res'=>$responseBody,'codhttp'=>'8010'];
     }
 
 
