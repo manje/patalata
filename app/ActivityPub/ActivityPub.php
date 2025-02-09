@@ -5,6 +5,7 @@ namespace App\ActivityPub;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Team;
+use App\Models\Campaign;
 use App\Models\Post;
 use App\Models\Apfollower;
 use App\Models\Apfollowing;
@@ -12,6 +13,7 @@ use App\Models\Timeline;
 use App\Models\Like;
 use App\Models\Announce;
 use App\Models\Block;
+use App\Models\Member;
 
 
 use Illuminate\Routing\Router;
@@ -40,6 +42,7 @@ class ActivityPub
     static function GetIdentidad()
     {
         $user=Auth::user();
+
         if (!$user) return false;
         if ($user->current_team_id)
         {
@@ -53,6 +56,7 @@ class ActivityPub
     {
         $user=User::where('slug',$slug)->first();
         if (!$user) $user=Team::where('slug',$slug)->first();
+        if (!$user) $user=Campaign::where('slug',$slug)->first();
         return $user;
     }
 
@@ -91,9 +95,10 @@ class ActivityPub
         if (is_array($url)) return $url;
         if(!\p3k\url\is_url($url)) return false;
         $domain=parse_url($url, PHP_URL_HOST);
+        if (false)
         if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
         {
-            $request = Request::create($url, 'GET');
+            $request = Request::get($url, 'GET');
             $response = app()->handle($request);
             $status = $response->getStatusCode();
             $body = $response->getContent();
@@ -152,8 +157,10 @@ class ActivityPub
         $actor=Cache::get($dica);
         if ($actor) return $actor;
         $parts=explode("@",$username);
+        Log::info('parts',$parts);
         if (count($parts)==2)
         {
+            $dica="actor 2 by username $username";
             $name=$parts[0];
             $domain=strtolower($parts[1]);
             // compobamos si $domain es un dominio válido con regexp (letras, numeros, guiones y punto)
@@ -296,8 +303,9 @@ class ActivityPub
         return $list;
     }
 
-    static function GetColeccion($user,$idlist,$solocount=false)
+    static function GetColeccion($user,$idlist,$solocount=false,$limite=false)
     {
+        #Log::info("get coleccion $idlist desde user ".$user->slug);
         if (is_string($idlist))
             $col=self::GetObjectByUrl($user,$idlist,3);
         else
@@ -354,6 +362,11 @@ class ActivityPub
                                 Cache::Put($i['id'],$i,60*60*24);
                             }
                         }
+                    if ($limite)
+                    {
+                        $items=array_slice($items,0,$limite);
+                        return $items;   
+                    }
                     if ($solocount)
                     if (count($items)>10000) 
                       return " > 10k ";
@@ -445,6 +458,30 @@ Este es un ejemplo de lo que nos hemos encontrado
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
                         Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->update(['accept' => true]);
+                        return response()->json(['message' => 'Accept'],202);
+                    case 'Invite':
+                        Members::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->update(['status' => 'editor']);
+                        return response()->json(['message' => 'Accept'],202);
+                    case 'Join':
+                        Members::where('actor', $activity['actor'])->where('object', $user->GetActivity()['id'])->update(['status' => 'editor']);
+                        return response()->json(['message' => 'Accept'],202);
+                    default:
+                        Log::info(print_r($activity,1));
+                        Log::info('Unknown activity type: (accept)' . $activity['type'] . '/' . $activity["object"]["type"]);
+                        return response()->json(['message' => 'Unknow activity '.$activity['type'] . '/' . $activity["object"]["type"]],202);
+                }
+            }
+            case 'Reject':
+            {
+                switch ($activity["object"]["type"]) {
+                    case 'Follow':
+                        Apfollowing::where('actor', $activity['actor'])->where('object', $user->GetActivity()['id'])->delete();
+                        return response()->json(['message' => 'Accept'],202);
+                    case 'Invite':
+                        Members::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
+                        return response()->json(['message' => 'Accept'],202);
+                    case 'Join':
+                        Members::where('actor', $activity['actor'])->where('object', $user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Accept'],202);
                     default:
                         Log::info(print_r($activity,1));
@@ -581,6 +618,21 @@ Este es un ejemplo de lo que nos hemos encontrado
                     Log::info('Update activity: '.print_r($activity,1));
                 }
                 return response()->json(['message' => 'No implementado'],501);
+            case 'Invite':
+                Member::create([
+                    'actor'=>$activity['actor'],
+                    'object'=>$activity['object'],
+                    'status'=>'Invite'
+                ]);
+                return response()->json(['message' => 'OK'],200);
+            case 'Join':
+                Member::create([
+                    'actor'=>$activity['object'],
+                    'object'=>$activity['actor'],
+                    'status'=>'Join'
+                ]);
+                return response()->json(['message' => 'OK'],200);
+
             default:
                 Log::info('Unknown activity type root: ' . $activity['type']);
                 Log::info(print_r($activity,1));

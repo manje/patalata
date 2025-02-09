@@ -14,9 +14,12 @@
         "laravel-vite-plugin": "^1.0",
         "postcss": "^8.4.47",
         "tailwindcss": "^3.4.14",
+        "@toast-ui/editor": "^3.2.2",
         "vite": "^5.0"
     },
     "dependencies": {
-        "@fortawesome/fontawesome-free": "^6.6.0"
+        "@fortawesome/fontawesome-free": "^6.6.0",
+        "@toast-ui/editor": "^3.2.2",
+        "codemirror": "^6.0.1"
     }
 }

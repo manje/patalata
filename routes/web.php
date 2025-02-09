@@ -33,12 +33,14 @@ Route::prefix('notas')->group(function () {
     Route::post('/', [NotaController::class, 'store'])->name('notas.store');
     Route::get('/{slug}', [NotaController::class, 'show'])->name('notas.show');
 });
+
+use App\Http\Controllers\CampaignController;
+Route::resource('campaigns', CampaignController::class);
+
 use App\Http\Controllers\AnnounceController;
 Route::prefix('announces')->group(function () {
     Route::get('/{slug}', [AnnounceController::class, 'show'])->name('announces.show');
 });
-
-
 
 use App\Http\Controllers\TareaController;
 

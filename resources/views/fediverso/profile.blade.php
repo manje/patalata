@@ -44,10 +44,9 @@
                     @endif
                 @endif
         </div>
-
         <div class="w-full">
             @auth
-                <livewire:fediverso.timeline :actor="$actor" >
+                <livewire:fediverso.timeline :actor="$actor" :key='"timelineactor"' />
             @endauth
         </div>
     </div>

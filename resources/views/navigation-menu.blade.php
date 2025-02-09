@@ -14,7 +14,7 @@
       <li><a href="{{ route('denuncias.index') }}" >Denuncias</a></li>
     </ul>
     <ul class="menu menu-horizontal px-1">
-      <li><a href="{{ route('notas.index') }}" >Notas</a></li>
+      <li><a href="{{ route('campaigns.index') }}" >Campañas</a></li>
     </ul>
     @auth
     <ul class="menu menu-horizontal px-1">

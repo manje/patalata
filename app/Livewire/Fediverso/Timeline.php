@@ -25,14 +25,19 @@ class Timeline extends Component
 
     public function mount($actor=false)
     {
-        if ($this->actor)
+        if ($actor)
+        {
             $this->actor=$actor;
+            return;
+        }
+
         $this->user=ActivityPub::GetIdentidad();
+        Log::info('en mount del tiemline la identidad es '.$this->user->slug);
     }
 
     public function loadMore()
     {
-        if ($this->actor) return true;
+        #if ($this->actor) return true;
         if ($this->user)
         {
             $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(5)->get();
@@ -68,7 +73,6 @@ class Timeline extends Component
 
     public function Nuevas()
     {
-
         if ($this->actor)
         {
             $this->nuevas=0;
@@ -103,19 +107,25 @@ class Timeline extends Component
     {
         if ($this->actor)
         {
-            $outbox=ActivityPub::GetColeccion($this->user,$this->actor['outbox']);
-            if (count($outbox)>50) $list=array_slice($outbox,0,50);
+            $u=ActivityPub::GetIdentidad();
+            Log::info('timeline loadposts actor '.$this->actor['outbox'].' y usuario '.$u->slug);
+            $outbox=ActivityPub::GetColeccion($u,$this->actor['outbox'],false,5);
+            Log::info(print_r($outbox,1));
+            #if (count($outbox)>50) $list=array_slice($outbox,0,50);
             $this->timeline=$outbox;
+            Log::info('timeline loadposts actor'.print_R($outbox,true));
             foreach ($this->timeline as $k=>$v)
             {
-                if (is_string($v)) $this->timeline[$k]=ActivityPub::GetObjectByUrl($this->user,$v);
+                if (is_string($v)) $this->timeline[$k]=ActivityPub::GetObjectByUrl($u,$v);
             }
-            return true;
+            #$this->timeline=[];
         }
         if ($this->user)
         {
+            Log::info('timeline loadposts user');
             $this->primero=false;
             $list=TL::where('user',$this->user->GetActivity()['id'])->orderBy('id','desc')->take($this->numactividades)->get();
+            Log::info(count($list).' actividades');
             if (count($list)==0)
                 $this->timeline=[];
             else

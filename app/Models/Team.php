@@ -20,7 +20,7 @@ class Team extends JetstreamTeam
     use HasFactory;
     use ModelFedi;
 
-    public $APtype='Person';
+    public $APtype='Group';
 
     protected $appends = [
         'profile_photo_url',

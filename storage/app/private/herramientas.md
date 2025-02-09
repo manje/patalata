@@ -215,6 +215,10 @@ que número de evaluaciones, y que proporción de ellas son correctas,
 consideran que un moderador tiene una trayectoria de
 evaluaciones certeras.
 
+Sería interesante que las evaluaciones se resolvieran por concenso, y disponer de algún tipo
+de mecanismo que se pusiera en marcha si alguna denuncia no se resuelve por una amplia
+mayoría elevándolo a otro mecanismo de resolución.
+
 https://www.colorado.edu/lab/medlab/2024/12/18/how-build-governable-spaces-online-communities
 https://www.contributor-covenant.org/
 

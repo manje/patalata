@@ -27,7 +27,7 @@ class CreateNewUser implements CreatesNewUsers
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'place' => ['required', 'exists:places,id'],
             // el slug es el username en ActivityPub, no se puede repetir ni en la tabla users ni en la tabla teams, y solo pueden ser letras minusculas, numeros y guion bajo
-            'slug' => ['required', 'string', 'max:25', 'unique:users', 'unique:teams', 'regex:/^[a-z0-9_]+$/'],
+            'slug' => ['required', 'string', 'max:25', 'unique:users', 'unique:teams', 'unique:campaigns', 'regex:/^[a-z0-9_]+$/'],
             'password' => $this->passwordRules(),
             'terms' => Jetstream::hasTermsAndPrivacyPolicyFeature() ? ['accepted', 'required'] : '',
         ])->validate();

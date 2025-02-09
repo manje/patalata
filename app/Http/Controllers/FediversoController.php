@@ -47,32 +47,10 @@ class FediversoController extends Controller
     public function profile(Request $request, string $slug)
     {
         $this->identidad=ActivityPub::GetIdentidad();        
+        #Log::info(print_r($this->identidad,1));
         $name=explode("@",$slug);
-        if (count($name)==1) $name[1]=$request->getHost();
+        if (count($name)==1) $name[1]=$request->getHost(); /// que lo consiga internamente xxxxxxxxxxxx
         $slug=$name[0].'@'.$name[1];
-        /*
-        if (count($name)==100000)
-        {
-            Log::info("slug profile $slug");
-            if (!$user)
-            {
-                Log::info("404");
-                return "404";
-            }
-            else
-            {
-                if ($request->wantsJson()) 
-                    return response()->json($user->GetActivity());
-                else
-                {
-                }   
-                $name[0]=$slug;
-                // host de la app
-                $name[1]=$request->getHost();
-                $slug=$name[0].'@'.$name[1];
-            }
-        }
-        */
         if (count($name)==2)
         {
             $actor=ActivityPub::GetActorByUsername($this->identidad,$slug);

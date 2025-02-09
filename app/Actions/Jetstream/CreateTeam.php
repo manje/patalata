@@ -23,7 +23,7 @@ class CreateTeam implements CreatesTeams
 
         Validator::make($input, [
             'name' => ['required', 'string', 'max:255'],
-            'slug' => ['required', 'string', 'max:25', 'unique:users', 'unique:teams', 'regex:/^[a-z0-9_]+$/'],
+            'slug' => ['required', 'string', 'max:25', 'unique:users', 'unique:teams', 'unique:campaigns', 'regex:/^[a-z0-9_]+$/'],
 
             ])->validateWithBag('createTeam');
 

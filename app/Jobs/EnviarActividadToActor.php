@@ -34,7 +34,7 @@ class EnviarActividadToActor implements ShouldQueue
     public function handle(): void
     {   
         Log::info("EnviarActividadToActor ".$this->actor);
-        $actor_to=ActivityPub::GetActorByUrl($this->user,$this->actor);
+        $actor=ActivityPub::GetActorByUrl($this->user,$this->actor);
         if ($actor===false) throw new \Exception('Error al localizar actor '.$this->actor);
         $json=json_encode($this->activity);
         $response=ActivityPub::EnviarActividadPOST($this->user,$json,$actor['inbox']);
