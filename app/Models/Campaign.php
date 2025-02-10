@@ -17,6 +17,8 @@ class Campaign extends Model
     use ModelFedi;
 
     public $APtype='Group';
+    public $type='Campaign';
+    
 
     protected $appends = [
         'profile_photo_url','image_url'

@@ -326,14 +326,17 @@ trait ModelFedi
         
             ];
 
+            if ($this->type=="Campaign")
+            {
+                $activity['members'] = route('activitypub.members', ['slug' => $this->slug]);
+            }
+
             $converter = new CommonMarkConverter([
                 'html_input' => 'strip',
                 'allow_unsafe_links' => false,
             ]);
-            #if ($this->content)$activity['content'] = $converter->convert($this->content);
             if ($this->summary) $activity['summary'] = $converter->convert($this->summary)->getContent();
-            if ($this->summary)  Log::info("ahi va ".$converter->convert($this->summary));
-            if ($this->summary)  Log::info(print_R($activity,1));
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
             if ($this->profile_photo_url)
             {
                 $activity['icon'] = [
@@ -496,7 +499,7 @@ trait ModelFedi
         return $user;
     }
 
-    public function Collection($listado,$url): JsonResponse
+    public function Collection($listado,$url,$desc=true): JsonResponse
     {
         if (!(Request::has('page'))) {
             $total=$listado->count();
@@ -509,8 +512,10 @@ trait ModelFedi
             ];
             return response()->json($list, 200, ['Content-Type' => 'application/activity+json']);
         }
-        $res = $listado->orderBy('id','desc')
-            ->paginate(20);
+        if ($desc)
+            $res = $listado->orderBy('id')->paginate(20);
+        else
+            $res = $listado->orderBy('id','desc')->paginate(20);
         $list = [];
         foreach ($res as $item) $list[] = $item->object;
         $col = [

@@ -25,19 +25,40 @@ class CampaignController extends Controller
 
     public function show(Request $request, $slug)
     {
+        $userap=ActivityPub::GetIdentidad();
+        // implementar ver campañas de otro server
         $modelo = Campaign::where('slug', $slug)->firstOrFail();
         $campaign = $modelo->GetActivity();
+        // hay que ver aqui si somos miembros, invitados, etc. de esta campaña y ver el $rol que tenemos, y federarlo
         if ($request->wantsJson())
             return response()->json($campaign);
 
         $user=Auth::user();
+        $members=[];
+        if (isset($campaign['members']))
+        {
+            Log::info('members');
+            $list=ActivityPub::GetColeccion($userap,$campaign['members']);
+            if (is_array($list))
+            {
+                Log::info('array');
+                foreach ($list as $url)
+                {
+                    $actor=ActivityPub::GetActorByUrl($userap,$url);
+                    if (is_array($actor))
+                        if(isset($actor['userfediverso']))
+                            $members[]= $actor;
+                }
+            }
+        }
+        #Log::info(print_r($members, true));
         $rol=$modelo->Rol($user);
         if ($rol=='admin')
         {
             
         }
         $local=ActivityPub::IsLocal($campaign['id']);
-        return view('campaigns.show', compact('campaign','rol','local'));
+        return view('campaigns.show', compact('campaign','rol','local','members'));
     }
 
     public function create()

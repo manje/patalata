@@ -21,6 +21,7 @@ class Team extends JetstreamTeam
     use ModelFedi;
 
     public $APtype='Group';
+    public $type='Team';
 
     protected $appends = [
         'profile_photo_url',

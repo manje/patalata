@@ -72,12 +72,13 @@ class Admin extends Component
             $k=$m->status;
             $c=$m->created_at;
             
-            $m=ActivityPub::GetObjectByUrl( Auth()->user(),$m->object );
+            $m=ActivityPub::GetActorByUrl( Auth()->user(),$m->object );
             if ($m)
             {
                 $m['created_at']=$c;
                 $list[$k][]=$m;
             }
+            \Illuminate\Support\Facades\Log::info(print_r($list,1));
         }
         return view('livewire.campaigns.admin',[
             'campaign'=>$this->campaign,

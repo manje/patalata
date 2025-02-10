@@ -9,6 +9,7 @@ use App\Models\Nota;
 use App\Models\Post;
 use App\Models\Apfollower;
 use App\Models\Apfollowing;
+use App\Models\Member;
 use App\Models\Outbox;
 
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -63,6 +64,15 @@ class ActivityPubUserController extends Controller
         $user=ActivityPub::GetIdentidadBySlug($slug);
         $listado=Apfollower::where('actor', $user->GetActivity()['id']);
         $url=route('activitypub.followers', ['slug' => $user->slug]);
+        return $this->Collection($listado,$url);
+    }
+
+    public function members($slug): JsonResponse
+    {
+        $user=ActivityPub::GetIdentidadBySlug($slug);
+        $listado = Member::where('actor', $user->GetActivity()['id'])
+        ->whereIn('status', ['admin', 'editor']);
+        $url=route('activitypub.members', ['slug' => $user->slug]);
         return $this->Collection($listado,$url);
     }
 
