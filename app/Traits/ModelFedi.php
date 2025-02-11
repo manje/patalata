@@ -306,6 +306,7 @@ trait ModelFedi
         }
         if ($this->APtype=='Group')
         {
+            $campaign=($this->type=='Campaign')?true:false;
             $activity = [
                 '@context' => 'https://www.w3.org/ns/activitystreams',
                 'id' => route('activitypub.actor', ['slug' => $this->slug]),
@@ -314,6 +315,7 @@ trait ModelFedi
                 'preferredUsername' => $this->slug,
                 'published' => $this->created_at->toIso8601String(),
                 'name' => $this->name,
+                'campaign' => $campaign,
                 'following' => route('activitypub.following', ['slug' => $this->slug]),
                 'followers' => route('activitypub.followers', ['slug' => $this->slug]),
                 'inbox' => route('activitypub.inbox', ['slug' => $this->slug]),
@@ -328,6 +330,7 @@ trait ModelFedi
 
             if ($this->type=="Campaign")
             {
+                $activity['url'] = route('campaigns.show', ['slug' => $this->slug]);
                 $activity['members'] = route('activitypub.members', ['slug' => $this->slug]);
             }
 

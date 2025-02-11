@@ -26,14 +26,37 @@ class CampaignController extends Controller
     public function show(Request $request, $slug)
     {
         $userap=ActivityPub::GetIdentidad();
-        // implementar ver campañas de otro server
-        $modelo = Campaign::where('slug', $slug)->firstOrFail();
-        $campaign = $modelo->GetActivity();
+        $id=explode('@',$slug);
+        if (count($id)==2)
+        {
+            if (parse_url($id[1], PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
+            {
+                $slug=$id[1];
+                $modelo = Campaign::where('slug', $slug)->firstOrFail();
+                $campaign = $modelo->GetActivity();
+            }
+            else
+            {
+                $campaign = ActivityPub::GetActorByUsername($userap, $slug);
+                if ($campaign['type']!="Group") return response()->json('Usuario no encontrado', 404);
+                if (!($act['campaign'] ?? false)) return response()->json('Usuario no encontrado', 404);
+                $modelo=false;
+            }
+        }
+        else
+        {
+            $modelo = Campaign::where('slug', $slug)->firstOrFail();
+            $campaign = $modelo->GetActivity();
+        }
+
+        if ($campaign['type']!="Group") return response()->json('Usuario no encontrado', 404);
+        $c=($this->type=='Campaign')?true:false;
+        if (!$c) return response()->json('Usuario no encontrado', 404);
+
         // hay que ver aqui si somos miembros, invitados, etc. de esta campaña y ver el $rol que tenemos, y federarlo
         if ($request->wantsJson())
             return response()->json($campaign);
 
-        $user=Auth::user();
         $members=[];
         if (isset($campaign['members']))
         {
@@ -52,7 +75,13 @@ class CampaignController extends Controller
             }
         }
         #Log::info(print_r($members, true));
-        $rol=$modelo->Rol($user);
+        if ($modelo)
+        {
+            $user=Auth::user();
+            $rol=$modelo->Rol($user);
+        }
+        else
+            $rol=null;
         if ($rol=='admin')
         {
             

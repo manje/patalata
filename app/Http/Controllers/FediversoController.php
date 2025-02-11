@@ -60,6 +60,11 @@ class FediversoController extends Controller
             }
             $bloqueado=Block::where('actor',$this->identidad->GetActivity()['id'])->where('object',$actor['id'])->first();
             $tehabloqueado=Block::where('actor',$actor['id'])->where('object',$this->identidad->GetActivity()['id'])->first();
+            if (!empty($actor['campaign'] ?? false))
+            {
+                return redirect(route('campaigns.show',$slug));
+
+            }
             return view('fediverso.profile', ['actor' => $actor,'bloqueado'=>$bloqueado,'tehabloqueado'=>$tehabloqueado,'identidad'=>$this->identidad]);
         }
         return response()->json('Usuario no encontrado', 404);

@@ -120,7 +120,6 @@ class ActivityPubUserController extends Controller
         }
 
         // Busca al usuario por su slug
-        Log::info("slug es $slug");
         $user=ActivityPub::GetIdentidadBySlug($slug);
         if (!$user) {
                 return response()->json(['error' => 'User not found'], 404);

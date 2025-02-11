@@ -35,7 +35,14 @@ Route::prefix('notas')->group(function () {
 });
 
 use App\Http\Controllers\CampaignController;
-Route::resource('campaigns', CampaignController::class);
+Route::get('/campaigns/@{slug}', [CampaignController::class, 'show'])->where('slug', '.*')->name('campaigns.show');
+Route::resource('campaigns', CampaignController::class)->except(['show']);
+
+#Route::get('/campaigns/@{slug}', [CampaignController::class, 'show'])
+#    ->where('slug', '.*')
+#    ->name('campaigns.show');
+#Route::resource('campaigns', CampaignController::class);
+#Route::get('/campaigns/@{slug}', [CampaignController::class, 'show'])->where('slug', '.*')->name('campaigns.show');
 
 use App\Http\Controllers\AnnounceController;
 Route::prefix('announces')->group(function () {
@@ -90,6 +97,7 @@ Use App\Http\Controllers\FediversoController;
 
 Route::get('/fedi', [FediversoController::class, 'index'])->name('fediverso.index'); // Formulario para crear un nuevo post
 Route::get('/@{slug}', [FediversoController::class, 'profile'])->where('slug', '.*')->name('fediverso.profile');
+Route::get('/capaign/@{slug}', [CampaignController::class, 'show'])->where('slug', '.*')->name('campaign.show');
 
 Route::get('/.well-known/webfinger', [ActivityPubUserController::class, 'webFinger'])
     ->name('activitypub.webfinger');
