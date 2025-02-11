@@ -27,31 +27,33 @@ class CampaignController extends Controller
     {
         $userap=ActivityPub::GetIdentidad();
         $id=explode('@',$slug);
+        Log::info(print_r($id,1));
         if (count($id)==2)
         {
             if (parse_url($id[1], PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
             {
+                Log::info('a');
                 $slug=$id[1];
                 $modelo = Campaign::where('slug', $slug)->firstOrFail();
                 $campaign = $modelo->GetActivity();
             }
             else
             {
+                Log::info('b');
                 $campaign = ActivityPub::GetActorByUsername($userap, $slug);
-                if ($campaign['type']!="Group") return response()->json('Usuario no encontrado', 404);
-                if (!($act['campaign'] ?? false)) return response()->json('Usuario no encontrado', 404);
+                Log::info(print_r($campaign,1));
                 $modelo=false;
             }
         }
         else
         {
+            Log::info('c');
             $modelo = Campaign::where('slug', $slug)->firstOrFail();
             $campaign = $modelo->GetActivity();
         }
 
         if ($campaign['type']!="Group") return response()->json('Usuario no encontrado', 404);
-        $c=($this->type=='Campaign')?true:false;
-        if (!$c) return response()->json('Usuario no encontrado', 404);
+        if ($act['campaign'] ?? false) return response()->json('Usuario no encontrado', 404);
 
         // hay que ver aqui si somos miembros, invitados, etc. de esta campaña y ver el $rol que tenemos, y federarlo
         if ($request->wantsJson())
