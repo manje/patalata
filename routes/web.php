@@ -38,11 +38,14 @@ use App\Http\Controllers\CampaignController;
 Route::get('/campaigns/@{slug}', [CampaignController::class, 'show'])->where('slug', '.*')->name('campaigns.show');
 Route::resource('campaigns', CampaignController::class)->except(['show']);
 
-#Route::get('/campaigns/@{slug}', [CampaignController::class, 'show'])
-#    ->where('slug', '.*')
-#    ->name('campaigns.show');
-#Route::resource('campaigns', CampaignController::class);
-#Route::get('/campaigns/@{slug}', [CampaignController::class, 'show'])->where('slug', '.*')->name('campaigns.show');
+use App\Http\Controllers\ArticleController;
+Route::prefix('articles')->group(function () {
+    Route::get('/', [ArticleController::class, 'index'])->name('articles.index'); // Mostrar lista de posts
+    Route::get('/create', [ArticleController::class, 'create'])->name('articles.create'); // Formulario para crear un nuevo post
+    Route::post('/', [ArticleController::class, 'store'])->name('articles.store'); // Guardar un nuevo post
+    Route::get('/{slug}', [ArticleController::class, 'show'])->name('articles.show'); // Mostrar un post individual
+    Route::put('/{slug}', [ArticleController::class, 'update'])->name('articles.update');
+});
 
 use App\Http\Controllers\AnnounceController;
 Route::prefix('announces')->group(function () {

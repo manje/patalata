@@ -516,9 +516,9 @@ trait ModelFedi
             return response()->json($list, 200, ['Content-Type' => 'application/activity+json']);
         }
         if ($desc)
-            $res = $listado->orderBy('id')->paginate(20);
-        else
             $res = $listado->orderBy('id','desc')->paginate(20);
+        else
+            $res = $listado->orderBy('id')->paginate(20);
         $list = [];
         foreach ($res as $item) $list[] = $item->object;
         $col = [

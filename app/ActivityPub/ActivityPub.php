@@ -98,6 +98,7 @@ class ActivityPub
         if (false)
         if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
         {
+            // esto provoca errroes 429
             $request = Request::get($url, 'GET');
             $response = app()->handle($request);
             $status = $response->getStatusCode();

@@ -1,18 +1,16 @@
-ActibityPub
-  GetActor que se genere con el trait
-  Responder
-  Notas privadas
-  Recibir respuestas
-  Encuestas (ahora solo se ven)
-  Mejorar visualización de notas con muchas imágenes
-  Visualización de cards de url
-  Recopilación de posts para poner en portada
-  slug para Places
+Rehacer Eventos
+Reahcer Artículos
+Rehacer Denuncias
+Guardar replys
+Responder
+Notas privadas
+Recibir respuestas
+Participar de Encuestas (ahora solo se ven)
+Mejorar visualización de notas con muchas imágenes
+Visualización de cards de url
+Capturar contenidos del outbox y el inbox
+slug para Places
 OpenGraph
-Reahcer Artículos, Denuncias y Eventos
-Campañas
-  store
-  index
-  Administrar
-  Que solo administradores de equipos puedan crearla
+Campañas, que solo administradores de equipos puedan crearla
 Home (crear pagina principal con los eventos, campañas, denuncias, etc. de cada localidad)
+Home de campaña
