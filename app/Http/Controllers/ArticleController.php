@@ -27,10 +27,8 @@ class ArticleController extends Controller
     public function show(Request $request, $slug)
     {
         $article = Article::where('slug', $slug)->firstOrFail();
-
         if ($request->wantsJson())
             return response()->json($article->GetActivity());
-
         return view('articles.show', compact('article'));
     }
 
@@ -46,7 +44,6 @@ class ArticleController extends Controller
             $equipos = $user->allTeams(); // Obtener equipos del usuario
         else
             $equipos = [];
-        
 
         try {
             $places = Place::all();
