@@ -412,7 +412,17 @@ Este es un ejemplo de lo que nos hemos encontrado
                 Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
-        switch($activity['type']) {
+            $txt="InBox ".$user->slug." $activity[type]: $activity[actor]";
+            #Log::info(print_r($activity,1));
+            if (isset($activity['object']))
+                if (is_string($activity['object']))
+                    $txt.="\t$activity[object]";
+                else
+                    if (isset($activity['object']['id']))
+                        $txt.="\t".$activity['object']['id'];
+
+            Log::info($txt);
+            switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
                 $actor = self::GetActorByUrl($user,$url);
@@ -427,7 +437,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                     'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$apFollow->id,
                     'type' => 'Accept',
                     'actor' => route('activitypub.actor', ['slug' => $user->slug]),
-                    'object' => $activity['id']
+                    'object' => $activity
                 ];
                 Queue::push(new EnviarActividadToActor($user,$actor['id'],$activity));
                 return response()->json(['message' => 'Follow request received'],202);
@@ -681,6 +691,7 @@ Este es un ejemplo de lo que nos hemos encontrado
         else
         {
 	        $headers = HTTPSignature::sign($user, false, $url);
+	        #print_R($headers);
 	        $ch = curl_init($url);
 	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 	        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);

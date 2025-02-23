@@ -5,6 +5,7 @@ namespace App\Traits;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\JsonResponse;
 
 use App\Jobs\DistribuirFedi;
@@ -37,7 +38,17 @@ trait ModelFedi
             {
                 Log::info("slug - id ");
                 if (!$model->slug) $model->slug=$model->id;
-                $model->distribute();
+                #$model->distribute();
+
+                $json = [
+                    '@context' => 'https://www.w3.org/ns/activitystreams',
+                    'id' => $model->GetActivity()['id'],
+                    'type' => 'Create',
+                    'actor' => $model->GetActor(),
+                    'to' => ['https://www.w3.org/ns/activitystreams#Public'],
+                    'object' => $model->GetActivity()
+                    ];
+                $user=$model->User();
                 // creo objeto Outbox
                 if (isset($model->actor))
                     $actor=$model->actor;
@@ -47,6 +58,8 @@ trait ModelFedi
                     'actor' => $actor,
                     'object' => $model->GetActivity()['id']
                 ]);
+                Queue::later(now()->addSeconds(5), new DistribuirFedi(false, $user, $json));
+                #Queue::push(new DistribuirFedi(false,$user,$json));
             }
             if ($model->APtype=='Collection')
             {
@@ -174,12 +187,24 @@ trait ModelFedi
                     }
                 }
             }
-        });    
+        });
 
         static::updating(function ($model) 
         {
-            // aquí hay que mandar los updates de notas, eventos, artículos y todo eso
-            #    Log::info("La actividad ha cambiado de '{$model->getOriginal('actividad')}' a '{$model->actividad}'");
+            $validos=['Note','Article','Announce','Question'];
+            if (in_array($model->APtype,$validos))
+            {
+                $json = [
+                    '@context' => 'https://www.w3.org/ns/activitystreams',
+                    'id' => $model->GetActivity()['id'],
+                    'type' => 'Update',
+                    'actor' => $model->GetActor(),
+                    'to' => ['https://www.w3.org/ns/activitystreams#Public'],
+                    'object' => $model->GetActivity()
+                    ];
+                $user=$model->User();
+                Queue::push(new DistribuirFedi(false,$user,$json));
+            }
             if ($model->APtype=='Collection')
             {
                 $idmodelo=Str::plural(class_basename($model));
@@ -240,24 +265,37 @@ trait ModelFedi
 
     }
 
-    public function GetActor()
+    public function GetActor($full=false)
     {
-        // esto creo que no se usa 
         if (isset($this->actor))
-            return $this->actor;
+            $a=$this->actor;
         else
         {
             $idmodelo=Str::plural(class_basename($this));
-            $team=User::find($this->team_id);
+            $team=Team::find($this->team_id);
             if ($team)
-                $this->actor=$team->GetActivity()['id'];
+                $a=$team->GetActivity()['id'];
             else
             {
                 $user=User::find($this->user_id);
-                $this->actor=$user->GetActivity()['id'];
+                $a=$user->GetActivity()['id'];
             }
-            return $this->actor;
         }
+        if ($full)
+          return ActivityPub::GetActorByUrl(null,$a);
+        else
+          return $a;
+    }
+
+    public function User()
+    {
+            $idmodelo=Str::plural(class_basename($this));
+            $team=Team::find($this->team_id);
+            if ($team)
+                return $team;
+            $user=User::find($this->user_id);
+            return $user;
+        
     }
 
     public function GetActivity()
@@ -459,13 +497,14 @@ trait ModelFedi
 
     public function distribute($activity=false)
     {
+        // esto vamos a dejar de usarlo y vamos a hacerlo directamente desde el boot de create
         if ($this->team_id)
             $user=Team::find($this->team_id);
         else
             $user=User::find($this->user_id);
-        //// team incluir campañas xxxxxxxxxxxxxx
         if (($this->APtype=='Announce') || ($this->APtype=='Block') )
         {
+            // Esto debe ir en el boot
             Log::info('comprobamos si la actividad está creada por nuestra instancia');
             // Solo distribuimos los impulsos que sean creados en local
             if  ( parse_url(config('app.url'), PHP_URL_HOST) != parse_url($this->actor, PHP_URL_HOST))
@@ -536,7 +575,20 @@ trait ModelFedi
         return response()->json($col, 200, ['Content-Type' => 'application/activity+json']);
     }
 
-    // attachments
+    
+    
+    public function editable()
+    {
+        // devuelve true si el usuario logueado es creador o parte del equipo del modelo
+        $user=Auth::user();
+        if ($user)
+        {
+            if ($user->id===$this->user_id) return true;
+            foreach ($user->teams as $team)
+                if ($team->id===$this->team_id) return true;
+        }
+        return false;
+    }
 
 
 

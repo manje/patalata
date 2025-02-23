@@ -38,11 +38,6 @@ class Article extends Model
         return $this->belongsTo(Category::class, 'category_id');
     }
 
-	public function ArticleFiles()
-	{
-	    return $this->hasMany(NotaFile::class);
-	}
-
     protected static function boot()
     {
         parent::boot();
@@ -58,17 +53,11 @@ class Article extends Model
                 $user=User::find($article->user_id);
                 $article->slug = $user->slug."_";
             }
-            \Illuminate\Support\Facades\Log::info($article->slug);
             $article->slug .= Str::slug($article->name);
-            \Illuminate\Support\Facades\Log::info($article->slug);
             if (strlen($article->slug)>50) $article->slug=substr($slug,0,50);
             if (self::where('slug', $article->slug)->exists()) 
                 $article->slug .= '_'.Str::random(2);
-            \Illuminate\Support\Facades\Log::info($article->slug);
-            while (self::where('slug', $article->slug)->exists()) {
-                $article->slug .= Str::random(2);
-            }            
-            \Illuminate\Support\Facades\Log::info($article->slug);
+            while (self::where('slug', $article->slug)->exists()) $article->slug .= Str::random(2);
             $article->ip = request()->ip();
         });
     }

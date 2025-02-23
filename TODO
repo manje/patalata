@@ -6,11 +6,16 @@ Responder
 Notas privadas
 Recibir respuestas
 Participar de Encuestas (ahora solo se ven)
-Mejorar visualización de notas con muchas imágenes
+Mejorar visualización de notas con muchas imágenes en el timeline
 Visualización de cards de url
-Capturar contenidos del outbox y el inbox
+Borrar contenido
+Capturar contenidos públicos del outbox y del inbox
 slug para Places
 OpenGraph
 Campañas, que solo administradores de equipos puedan crearla
 Home (crear pagina principal con los eventos, campañas, denuncias, etc. de cada localidad)
 Home de campaña
+SharedInbox
+Federar miembros de Equipos
+Foros de discusión privados dentro de equipos
+Foros de discusión públicos dentro de localidades

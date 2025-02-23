@@ -42,6 +42,7 @@ use App\Http\Controllers\ArticleController;
 Route::prefix('articles')->group(function () {
     Route::get('/', [ArticleController::class, 'index'])->name('articles.index'); // Mostrar lista de posts
     Route::get('/create', [ArticleController::class, 'create'])->name('articles.create'); // Formulario para crear un nuevo post
+    Route::get('/edit/{slug}', [ArticleController::class, 'edit'])->name('articles.edit');
     Route::post('/', [ArticleController::class, 'store'])->name('articles.store'); // Guardar un nuevo post
     Route::get('/{slug}', [ArticleController::class, 'show'])->name('articles.show'); // Mostrar un post individual
     Route::put('/{slug}', [ArticleController::class, 'update'])->name('articles.update');
@@ -60,16 +61,6 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/tareas/{tarea}/quitar-voto', [TareaController::class, 'quitarVoto'])->name('tareas.quitarVoto');
 });
 
-use App\Http\Controllers\PostController;
-Route::resource('/articulo', PostController::class);
-
-
-Route::prefix('articulos')->group(function () {
-    Route::get('/', [PostController::class, 'index'])->name('posts.index'); // Mostrar lista de posts
-    Route::get('/create', [PostController::class, 'create'])->name('posts.create'); // Formulario para crear un nuevo post
-    Route::post('/', [PostController::class, 'store'])->name('posts.store'); // Guardar un nuevo post
-    Route::get('/{slug}', [PostController::class, 'show'])->name('posts.show'); // Mostrar un post individual
-});
 
 use App\Http\Controllers\ActivityPubUserController;
 

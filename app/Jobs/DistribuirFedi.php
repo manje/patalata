@@ -13,6 +13,7 @@ use App\ActivityPub\ActivityPub;
 
 use Illuminate\Support\Facades\Log;
 
+/* Envía una actividad a todos los followeres */
 
 class DistribuirFedi implements ShouldQueue
 {
@@ -27,7 +28,8 @@ class DistribuirFedi implements ShouldQueue
      */
     public function __construct($data,$user,$activity=false)
     {
-        $this->data = $data;
+        Log::info('DistribuirFedi Construcor ');
+        $this->data = $data;  // evitemos $data y usemos activity
         $this->user = $user;
         $this->activity = $activity;
     }
@@ -37,7 +39,14 @@ class DistribuirFedi implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('DistribuirFedi: ');
+        Log::info('DistribuirFedi:  hadle');
+        if (($this->activity['type']=='Create') || ($this->activity['type']=='Update'))
+        {
+            Log::info("Esperamos 10s".print_r($this->activity,1));
+            $this->activity['object']=ActivityPub::GetObjectByUrl($user,$this->activity['object']['id']);
+            Log::info("Fin 10s".print_r($this->activity,1));
+        }
+        Log::info('DistribuirFedi: inicio ');
         $followers=Apfollower::where('actor', $this->user->GetActivity()['id'])->get();
         $list=[];
         foreach ($followers as $follower)

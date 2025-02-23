@@ -28,7 +28,15 @@
         <x-label for="content" value="{{ __('Texto completo') }}" />
         <x-textarea id="content" class="block mt-1 w-full" name="content" required value="{!! old('content',$article->content) !!}" />
     </div>
-
+    <div class="mb-4">
+        <x-label for="content" value="{{ __('Imágenes y Video') }}" />
+        @if (old('uniqid',$uniqid ))
+            <livewire:multimedia :uniqid=" old('uniqid',$uniqid)" />
+        @else
+            <livewire:multimedia :files="$article->apfiles->toArray()" :uniqid="$uniqid ?? old('uniqid')" /> 
+        @endif
+    </div>
+    
     <div class="mb-4">
         <label for="place_id" class="block text-sm font-medium text-gray-700">Localidad (opcional)</label>
         <select name="place_id" id="place_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50">

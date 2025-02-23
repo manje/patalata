@@ -14,7 +14,12 @@ class Seguir extends Component
 
     public function mount($actor)    
     {
-        $this->actor=$actor;
+        Log::info(print_r($this->actor,1));
+        if (is_string($actor)) 
+            $this->actor=ActivityPub::GetActorByUrl(ActivityPub::GetIdentidad(), $actor);
+        else
+            $this->actor=$actor;
+        Log::info(print_r($this->actor,1));
         $this->siguiendo=$this->siguiendo();
     }
 
@@ -44,6 +49,6 @@ class Seguir extends Component
 
     public function render()
     {
-        return view('livewire.fediverso.seguir', ['actor' => $this->actor]);
+        return view('livewire.fediverso.seguir', ['actor' => $this->actor,'siguiendo' => $this->siguiendo]);
     }
 }
