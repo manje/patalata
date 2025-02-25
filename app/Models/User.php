@@ -14,7 +14,7 @@ use App\Traits\ModelFedi;
 
 
 use Illuminate\Support\Str; // Importar la clase Str
-use Illuminate\Contracts\Auth\MustVerifyEmail; 
+
 
 use phpseclib3\Crypt\RSA;
 
