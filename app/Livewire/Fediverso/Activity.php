@@ -55,6 +55,8 @@ class Activity extends Component
             else
                 $this->activity=$this->activity['object'];
         }
+        if (isset($this->activity['error'])) $this->activity['type']="Error";
+        if (isset($this->activity['errors'])) $this->activity['type']="Error";
         if (isset($this->activity['actor']))
             if (is_string($this->activity['actor']))
                 $this->activity['actor']=ActivityPub::GetActorByUrl($this->user , $this->activity['actor']);
@@ -105,7 +107,34 @@ class Activity extends Component
         
         if (isset($this->activity['content']))
             $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
+        if (isset($this->activity['summary']))
+            $this->activity['summary']=ActivityPub::limpiarHtml($this->activity['summary']);
         if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
+        $this->activity['visible']='private';
+        $to=[];
+        if (isset($this->activity['to'])) $to=(array)$this->activity['to'];
+        if (isset($this->activity['cc'])) $to=array_merge($to,(array)$this->activity['cc']);
+        if (isset($this->activity['bto'])) $to=array_merge($to,(array)$this->activity['bto']);
+        if (isset($this->activity['bcc'])) $to=array_merge($to,(array)$this->activity['bcc']);
+        $this->activity['to']=array_unique($to);
+        if (isset($this->activity['bto']))
+            unset($this->activity['bto']);
+        if (isset($this->activity['bcc']))
+            unset($this->activity['bcc']);
+        if (isset($this->activity['attributedTo']))
+            if (in_array($this->activity['attributedTo']['followers'], $this->activity['to']))
+                $this->activity['visible']='followers';
+        if (in_array('https://www.w3.org/ns/activitystreams#Public', $this->activity['to']))
+            $this->activity['visible']='public';
+        if (isset($this->activity['type']))
+            if ($this->activity['type']=='Announce')
+                $this->activity['visible']='public';
+        $soportado=['Note','Page','Article,','Event','Question','Audio','Video','Image','Announce'];
+        if (!in_array($this->activity['type'], $soportado))
+        {
+            $this->activity['error']='Actividad no soportada';
+            Log::info(print_r($this->activity,1));
+        }
     }
 
 
@@ -127,6 +156,7 @@ class Activity extends Component
     }
     public function setlike()
     {
+        // solo habíra que guardar el modelo y el envío se deberí hacer desde el trait 
         if ($this->like)
         {
             // undo
@@ -178,6 +208,7 @@ class Activity extends Component
 
     public function setimpulso()
     {
+        // solo habíra que guardar el modelo y el envío se deberí hacer desde el trait 
         Log::info("Hacemos rt1");
         if ($this->rt)
         {
@@ -186,7 +217,6 @@ class Activity extends Component
         }
         else
         {
-            Log::info("Hacemos rt");
             $rt=Announce::firstOrCreate(['object'=>$this->activity['id'], 'actor'=>$this->user->GetActivity()['id']]);
             $this->rt=true;
         }
@@ -194,6 +224,7 @@ class Activity extends Component
 
     public function render()
     {
+        #Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')

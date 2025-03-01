@@ -37,10 +37,12 @@ class Timeline extends Component
 
     public function loadMore()
     {
+        Log::info("load more");
         #if ($this->actor) return true;
         if ($this->user)
         {
-            $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(5)->get();
+            $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(100)->get();
+            $co=0;
             foreach ($list as $item)
             {
                 $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
@@ -48,8 +50,10 @@ class Timeline extends Component
                 {
                     $idtl=$item->id;
                     $this->timeline[$idtl]=$a;
+                    if ($co++ > 10) break;
                 }
             }
+            Log::info("nuevo ultimo es ".$item->id);
             if (count($list)>0) $this->ultimo=$item->id;
 
         }

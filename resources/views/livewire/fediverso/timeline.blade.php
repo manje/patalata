@@ -1,4 +1,4 @@
-<div wire:init="loadPosts" wire:poll.5s="Nuevas">
+<div wire:init="loadPosts" wire:poll.15s="Nuevas">
     @if ($timeline===false)
         <div class="flex-1 flex items-center justify-center">
             <div class="text-center">
@@ -40,4 +40,8 @@
         @endif
 
     @endif
+    <div id=buscandomas style='display:none;'>
+        <p class="mt-20"><span class="loading loading-ring loading-lg"></span> Cargando...</p>
+    </div>
+
 </div>

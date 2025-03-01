@@ -40,7 +40,7 @@
         </p> 
     </div>
     <div id="timeline-container" class="flex-1 overflow-y-scroll">
-        <livewire:fediverso.timeline   />                    
+        <livewire:fediverso.timeline   />
     </div>
 
     <script>
@@ -57,6 +57,9 @@ function loadMore() {
     let scrollHeight = document.documentElement.scrollHeight;
     if (scrollTop + clientHeight >= scrollHeight) {
         Livewire.dispatch('loadMore');
+        console.log('loadMore');
+        // enseño el div de buscandomas
+        document.getElementById('buscandomas').style.display = 'block';
     }
 }
  
