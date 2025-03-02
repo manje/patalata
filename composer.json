@@ -15,6 +15,7 @@
         "livewire/livewire": "^3.5",
         "livewire/volt": "^1.6",
         "maatwebsite/excel": "^3.1",
+        "matanyadaev/laravel-eloquent-spatial": "^4.5",
         "p3k/utils": "^1.2",
         "phpseclib/phpseclib": "^3.0"
     },

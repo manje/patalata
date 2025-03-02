@@ -8,7 +8,7 @@ descubrir eventos, podcasts, artículos y otras actividades asociadas a su local
 
 # Requisitos del Sistema
 
-El sistema está basado en Laravel 11, por lo que necesitará al menos la
+El sistema está basado en Laravel 12, por lo que necesitará al menos la
 versión 8.2 de PHP.
 
 Tenemos pendiente hacer la instalación en máquinas recién instaladas con las
@@ -25,7 +25,7 @@ Estos pasos instalan la aplicación en un servidor web nginx o Apache, usando de
 datos MariaDB o MySql, con almacenamiento y correo local.
 
 Si está familizarizado con el entorno Laravel el despliegue de la aplicación
-sigue el sistema estandar.
+sigue el método estandar.
 
 # Base de datos
 
@@ -43,6 +43,8 @@ flush privileges;
 
 Esto creará la base de datos patalata y un usuario también llamado patalata
 con permisos en esa base de datos.
+
+Si desea usar PostgreSQL debes instalar la extensión PostGIS.
 
 # Descarga
 
@@ -96,7 +98,6 @@ los contenidos a otras instancias federadas.
 Estos pasos deberá hacerlo con el usuario root, debe tener configurado en el
 servidor 
 
-
 ## Nginx
 
 Debe crear un fichero en /etc/nginx/sites-available/ , por ejemplo
@@ -110,7 +111,7 @@ ln -s /etc/nginx/sites-available/travellist /etc/nginx/sites-enabled/
 server {
     listen 80;
     server_name server_domain_or_IP;
-    root /var/www/travellist/public;
+    root /var/www/patalata/public;
 
     add_header X-Frame-Options "SAMEORIGIN";
     add_header X-XSS-Protection "1; mode=block";
@@ -158,4 +159,3 @@ npm run build
 php artisan up
 
 ```
-

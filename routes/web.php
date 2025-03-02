@@ -48,6 +48,16 @@ Route::prefix('articles')->group(function () {
     Route::put('/{slug}', [ArticleController::class, 'update'])->name('articles.update');
 });
 
+use App\Http\Controllers\EventController;
+Route::prefix('/events')->group(function () {
+    Route::get('/', [EventController::class, 'index'])->name('events.index');
+    Route::get('/create', [EventController::class, 'create'])->name('events.create'); // Formulario para crear un nuevo post
+    Route::get('/edit/{slug}', [EventController::class, 'edit'])->name('events.edit');
+    Route::post('/', [EventController::class, 'store'])->name('events.store'); // Guardar un nuevo post
+    Route::get('/{slug}', [EventController::class, 'show'])->name('events.show'); // Mostrar un post individual
+    Route::put('/{slug}', [EventController::class, 'update'])->name('events.update');
+});
+
 use App\Http\Controllers\AnnounceController;
 Route::prefix('announces')->group(function () {
     Route::get('/{slug}', [AnnounceController::class, 'show'])->name('announces.show');

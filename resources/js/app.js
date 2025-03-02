@@ -1,6 +1,10 @@
 import './bootstrap';
 import '@fortawesome/fontawesome-free/css/all.css';
 
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+window.L = L;
 
 
 

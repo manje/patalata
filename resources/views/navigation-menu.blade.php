@@ -8,6 +8,9 @@
       <li><a href="{{ route('eventos.index') }}" >Agenda</a></li>
     </ul>
     <ul class="menu menu-horizontal px-1">
+      <li><a href="{{ route('events.index') }}" >Eventos</a></li>
+    </ul>
+    <ul class="menu menu-horizontal px-1">
       <li><a href="{{ route('articles.index') }}" >Artículos</a></li>
     </ul>
     <ul class="menu menu-horizontal px-1">
