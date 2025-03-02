@@ -94,6 +94,7 @@ class ActivityPub
         // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
         if (is_array($url)) return $url;
         if(!\p3k\url\is_url($url)) return false;
+        if ($out=Cache::get($url)) return $out;
         $domain=parse_url($url, PHP_URL_HOST);
         if (false)
         if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
@@ -506,6 +507,9 @@ Este es un ejemplo de lo que nos hemos encontrado
             }
             case 'Create':
             {
+
+                // Aqui gestionamos la actividad si es pública, esto es, según el tipo si queremos añadirl a colecciones publicas, incluir un evento en la agenda, procesar HastTags, etc.
+                    
                 // Compruebo si el actor está entre los seguidos del usuario
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
                 if (is_null($seguido))
@@ -546,10 +550,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                     $line->actor_id=$activity['actor'];
                     $line->activity=$activity["object"]['id'];
                     // guardo en cache la actividad
-                    Cache::put($activity["object"]['id'],$activity["object"],3600*8);
-                    
-
-                    // Aqui gestionamos la actividad, esto es, según el tipo si queremos añadirl a colecciones publicas, incluir un evento en la agenda, procesar HastTags, etc.
+                    Cache::put($activity["object"]['id'],$activity["object"],3600*24*15);
                     
                     
                     // Aqui gestionamos la actividad en función del tipo

@@ -9,7 +9,7 @@
         @if (count($timeline)>0)
             @if ($nuevas>0)
             <div class="m-4"  >
-                <div role="alert" class="alert cursor-pointer"  wire:click="VerNuevas;">
+                <div role="alert" class="alert cursor-pointer"  wire:click="VerNuevas">
                     <i class="fa fa-bell"></i>
                     <span wire:target="VerNuevas" wire:loading.remove>Hay {{$nuevas}} 
                         @if ($nuevas>1)
