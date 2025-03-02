@@ -129,11 +129,10 @@ class Activity extends Component
         if (isset($this->activity['type']))
             if ($this->activity['type']=='Announce')
                 $this->activity['visible']='public';
-        $soportado=['Note','Page','Article,','Event','Question','Audio','Video','Image','Announce'];
-        if (!in_array($this->activity['type'], $soportado))
+        $soportado=['Note','Page','Article','Event','Question','Audio','Video','Image','Announce'];
+        if (!(in_array($this->activity['type'], $soportado)))
         {
-            $this->activity['error']='Actividad no soportada';
-            Log::info(print_r($this->activity,1));
+            $this->activity['error']='Actividad no soportada '.$this->activity['type'];
         }
     }
 

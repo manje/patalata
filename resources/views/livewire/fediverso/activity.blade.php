@@ -96,7 +96,6 @@ wire:init="load"
                             {{ $activity['published']->diffForHumans() }}
                     </p>
 
-
                     @if ($activity['sensitive'])
                         <div x-show="sensitive" x-on:click="oculto = !oculto"
                                 class="flex flex-items border border-4 border-yellow-300 bg-black text-white w-full cursor-pointer">
@@ -116,8 +115,7 @@ wire:init="load"
                         @if (isset($activity['name']))
                         <h3 class="text-xl font-semibold">{{ $activity['name'] ?? '' }}</h3>
                         @endif
-    
-                        @if ($activity['type']!='Note'))
+                        @if ($activity['type']!='Note')
                             <p class="mt-1 text-gray-700">
                                 {!! $activity['summary'] ?? 'Sin descripción disponible.' !!}
                             </p>

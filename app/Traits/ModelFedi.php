@@ -126,7 +126,7 @@ trait ModelFedi
                 $model->distribute($activity);
             }
             // hay que lanzar delete si se trata de un objeto que se ha distribuido con create
-            $validos=['Note','Article','Announce','Question'];
+            $validos=['Note','Article','Announce','Question','Page'];
             if (in_array($model->APtype,$validos))
             {
                 $activity=[
@@ -191,7 +191,7 @@ trait ModelFedi
 
         static::updating(function ($model) 
         {
-            $validos=['Note','Article','Announce','Question'];
+            $validos=['Note','Article','Announce','Question','Page'];
             if (in_array($model->APtype,$validos))
             {
                 $json = [
@@ -432,20 +432,77 @@ trait ModelFedi
                 // 'cc' => Aquí necesitamos un endpoint para los seguidores de este usuario
                 'published' => $this->created_at->toIso8601String(),
                 'updated' => $this->updated_at->toIso8601String(),
+                'mediaType' => 'text/html',
+                'attachment' => $this->getActivityPubAttachments()
+            ];
+            $converter = new CommonMarkConverter([
+                'html_input' => 'strip',
+                'allow_unsafe_links' => false,
+            ]);
+            if ($this->summary) $activity['summary'] = $converter->convert($this->summary)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+        }
+
+
+
+
+
+        if ($this->APtype=='Event')
+        {
+            $idmodelo=Str::plural(Str::lower(class_basename($this)));
+            $activity = [
+                '@context' => $contexto,
+                'type' => 'Event',
+                'id' => Route($idmodelo.'.show', ['slug' => $this->slug]),
+                'url' => Route($idmodelo.'.show', ['slug' => $this->slug]),
+                'attributedTo' => Route('activitypub.actor', ['slug' => $user->slug]),
+                'to' => 'https://www.w3.org/ns/activitystreams#Public',
+                // 'cc' => Aquí necesitamos un endpoint para los seguidores de este usuario
+                'published' => $this->created_at->toIso8601String(),
+                'updated' => $this->updated_at->toIso8601String(),
                 'summary' => $this->summary,
-                'sensitive' => $this->sensitive,
                 'content' => $this->content,
                 'mediaType' => 'text/html',
                 'attachment' => $this->getActivityPubAttachments()
             ];
-            $at=$this->getActivityPubAttachments();
-            if (count($at)>0) $activity['attachment'] = $at;
-            if ($this->sensitive)
-            {
-                $activity['sensitive'] = true;
-                $activity['summary'] = $this->summary;
-            }
+
+            $converter = new CommonMarkConverter([
+                'html_input' => 'strip',
+                'allow_unsafe_links' => false,
+            ]);
+            if ($this->name) $activity['name'] = $this->name;
+            if ($this->summary) $activity['summary'] = $converter->convert($this->summary)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            $activity['startTime'] = $this->startTime->toIso8601String();
+            if ($this->endTime) $activity['endTime'] = $this->endTime->toIso8601String();
+
+            $activity['location'] = [
+                'address'=>[
+                    'addressCountry' => $this->location_addressCountry,
+                    'addressLocality' => $this->location_addressLocality,
+                    'addressRegion' =>$this->location_addressRegion,
+                    'postalCode' => $this->location_postalCode,
+                    'streetAddress' => $this->location_streetAddress,
+                    'type' => 'PostalAddress'
+                ],
+                'latitude' => $this->coordinates->latitude,
+                'longitude' => $this->coordinates->longitude,
+                'name' => $this->location_name,
+                'type' => 'Place'
+            ];
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
+
         }
+
+
+
+
 
         if ($this->APtype=='Announce')
         {

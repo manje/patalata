@@ -37,6 +37,19 @@
         @endif
     </div>
     
+
+
+    <div class="mb-4">
+        <x-label for="content" value="{{ __('Asociar a una campaña') }}" />
+        @if (old('campaigns', $article->campaigns))
+            <livewire:fediverso.sel-campaign :campaigns="old('campaigns', $article->campaigns)" />
+        @else
+            <livewire:fediverso.sel-campaign />
+        @endif
+    </div>
+
+
+
     <div class="mb-4">
         <label for="place_id" class="block text-sm font-medium text-gray-700">Localidad (opcional)</label>
         <select name="place_id" id="place_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring focus:ring-opacity-50">

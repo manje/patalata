@@ -53,13 +53,11 @@ class Campaign extends Model
         'private_key'
     ];
 
+
     public function Rol($user)
     {
+        if (!$user) return false;
         $rol=Member::where('object',$user->GetActivity()['id'])->where('object',$this->GetActivity()['id'])->first();
-        if ($rol)
-            return $rol->status;
-        if (!$rol)
-        {
             $equipos = $user->allTeams();
             foreach ($equipos as $t)
             {
@@ -73,7 +71,6 @@ class Campaign extends Model
 
                 }
             }
-        }
         return $rol;
     }
 

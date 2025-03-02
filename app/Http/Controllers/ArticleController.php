@@ -55,6 +55,7 @@ class ArticleController extends Controller
             ]);
         }
         $article=new Article();
+        $article->campaigns=[];
         $uniqid=false;
         $article->uniqid=$uniqid;
         return view('articles.create', compact('places', 'categories', 'equipos', 'article','uniqid'));

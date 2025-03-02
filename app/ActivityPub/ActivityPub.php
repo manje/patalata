@@ -154,11 +154,15 @@ class ActivityPub
 
     static function GetActorByUsername($user,$username)
     {
+        Log::info("buscando $username ");
+        $username=trim($username);
+        if (strlen($username<3)) return false;
+        if ($username[0]=='@')
+            $username=substr($username,1);
         $dica="actor by username $username";
         $actor=Cache::get($dica);
         if ($actor) return $actor;
         $parts=explode("@",$username);
-        Log::info('parts',$parts);
         if (count($parts)==2)
         {
             $dica="actor 2 by username $username";
