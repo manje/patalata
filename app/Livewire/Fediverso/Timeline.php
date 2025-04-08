@@ -43,8 +43,7 @@ class Timeline extends Component
                 $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
                 if (isset($a['id']))
                 {
-                    $idtl=$item->id;
-                    $this->timeline[$idtl]=$a;
+                    $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
                 }
             }
             if (count($list)>0) $this->ultimo=$item->id;
@@ -60,9 +59,8 @@ class Timeline extends Component
             if (count($this->timeline)>$max) $this->timeline=array_slice($this->timeline,0,$max);
             $this->nuevaslist=[];
             $this->nuevas=0;
-            #$this->serial++;
+            $this->serial++;
             $this->primero=$this->siguienteprimero;
-
         }
     }
 
@@ -90,8 +88,7 @@ class Timeline extends Component
                     $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
                     if (isset($a['id']))
                     {
-                        $idtl=$item->id;
-                        $this->nuevaslist[$idtl]=$a;
+                        $this->nuevaslist[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
                     }
                     $this->nuevas=count($this->nuevaslist);
                 }
@@ -104,12 +101,17 @@ class Timeline extends Component
         if ($this->actor)
         {
             $u=ActivityPub::GetIdentidad();
-            $outbox=ActivityPub::GetColeccion($u,$this->actor['outbox'],false,5);
+            $outbox=(array)ActivityPub::GetColeccion($u,$this->actor['outbox'],false,5);
             #if (count($outbox)>50) $list=array_slice($outbox,0,50);
-            $this->timeline=(array)$outbox;
-            foreach ($this->timeline as $k=>$v)
+            $this->timeline=[];
+            foreach ($outbox as $k=>$v)
             {
-                if (is_string($v)) $this->timeline[$k]=ActivityPub::GetObjectByUrl($u,$v);
+                if (is_string($v)) 
+                    $a=ActivityPub::GetObjectByUrl($u,$v);
+                else
+                    $a=$v;
+                if (isset($a['id']))
+                    $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
             }
         }
         if ($this->user)
@@ -123,13 +125,13 @@ class Timeline extends Component
                 $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
                 if (isset($a['id']))
                 {
-                    $idtl=$item->id;
-                    $this->timeline[$idtl]=$a;
+                    $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
                 }
             }
             if (isset($item))
                 $this->ultimo=$item->id;
         }
+        $this->serial++;
     }
     public function render()
     {

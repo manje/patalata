@@ -33,7 +33,7 @@ trait ModelFedi
         static::created(function ($model) {
             Log::info("tipo: ".$model->APtype." act ".$model->actor);
 
-            $validos=['Note','Article','Announce','Question'];
+            $validos=['Note','Article','Announce','Question','Page'];
             if (in_array($model->APtype,$validos))
             {
                 Log::info("slug - id ");
@@ -303,7 +303,7 @@ trait ModelFedi
         if (isset($this->APtranslate))
             foreach ($this->APtranslate as $key => $value)
                 $this->$key = $this->$value;
-        $conuser=['Note','Article','Question','Event'];
+        $conuser=['Note','Article','Announce','Question','Page'];
         if (in_array($this->APtype,$conuser))
         {
             if ($this->team_id)

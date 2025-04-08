@@ -10,7 +10,7 @@
         <!-- foto de perfil superpuesta la mitad sobre el banner sueprior -->
         <div class="w-full flex -mt-12  pl-6">
             <div class="">
-                @if (isset($actor['icon']))
+                @if (isset($actor['icon']['url']))
                     <img src="{{ $actor['icon']['url'] }}" alt="foto de perfil" class="h-24 w-24 rounded-full border-4 border-white">
                 @endif
             </div>

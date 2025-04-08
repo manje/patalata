@@ -79,6 +79,7 @@ class HTTPSignature {
 
   public static function verify($publicKey, $signatureData, $inputHeaders, $path, $body) {
     // TODO: Not sure how to determine the algorithm used, but everyone seems to use SHA256 right now
+    #Log::info("----------------------------------------------".print_r($signatureData,1));
     $digest = 'SHA-256='.base64_encode(hash('sha256', $body, true));
     $headersToSign = [];
     foreach(explode(' ',$signatureData['headers']) as $h) {
@@ -92,6 +93,7 @@ class HTTPSignature {
     }
     $signingString = self::_headersToSigningString($headersToSign);
     $verified = openssl_verify($signingString, base64_decode($signatureData['signature']), $publicKey, OPENSSL_ALGO_SHA256);
+    //Log::info("verify $verified
     return [$verified, $signingString];
   }
 

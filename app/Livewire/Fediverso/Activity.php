@@ -61,14 +61,22 @@ class Activity extends Component
             if (is_string($this->activity['actor']))
                 $this->activity['actor']=ActivityPub::GetActorByUrl($this->user , $this->activity['actor']);
         if (isset($this->activity['published'])) $this->activity['published']=Carbon::parse($this->activity['published']);
+
+
         if (isset($this->activity['object']))
             if (is_string($this->activity['object']))    $this->activity['object']=ActivityPub::GetObjectByUrl($this->user , $this->activity['object']);
+
         if (isset($this->activity['attributedTo']))
+        {
+            if (is_array($this->activity['attributedTo']))
+            if (array_is_list($this->activity['attributedTo']))
+                $this->activity['attributedTo']=$this->activity['attributedTo'][0];
             if (is_string($this->activity['attributedTo']))
             {
                 $this->activity['attributedTo']=ActivityPub::GetObjectByUrl($this->user , $this->activity['attributedTo']);
                 if (!(isset($this->activity['attributedTo']['preferredUsername']))) $this->activity['error']='Error en attributedTo';
             }
+        }
         $this->activity['num_replies']='?';
         $this->activity['num_likes']='?';
         $this->activity['num_shares']='?';
@@ -122,8 +130,9 @@ class Activity extends Component
         if (isset($this->activity['bcc']))
             unset($this->activity['bcc']);
         if (isset($this->activity['attributedTo']))
-            if (in_array($this->activity['attributedTo']['followers'], $this->activity['to']))
-                $this->activity['visible']='followers';
+            if (isset($this->activity['attributedTo']['followers']))
+                if (in_array($this->activity['attributedTo']['followers'], $this->activity['to']))
+                    $this->activity['visible']='followers';
         if (in_array('https://www.w3.org/ns/activitystreams#Public', $this->activity['to']))
             $this->activity['visible']='public';
         if (isset($this->activity['type']))
@@ -132,7 +141,7 @@ class Activity extends Component
         $soportado=['Note','Page','Article','Event','Question','Audio','Video','Image','Announce'];
         if (!(in_array($this->activity['type'], $soportado)))
         {
-            $this->activity['error']='Actividad no soportada '.$this->activity['type'];
+            $this->activity['error']='Actividad no soportada '.$this->activity['type'];#.'<pre>'.print_r($this->activity,1).'</pre>';
         }
     }
 
@@ -223,7 +232,7 @@ class Activity extends Component
 
     public function render()
     {
-        #Log::info(print_r($this->activity,1));
+        Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')
@@ -233,6 +242,8 @@ class Activity extends Component
         if (!(isset($this->activity['id']))) 
             Log::info(print_r($this->activity,1));
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";
+        return view('livewire.fediverso.activity');
+        /*
         return view('livewire.fediverso.activity', [
             'activity' => $this->activity,
             'origen' => $this->origen,
@@ -241,5 +252,6 @@ class Activity extends Component
             'msgrespondiendo'=>$this->msgrespondiendo,
             'like'=>$this->like
         ]);
+        */
     }
 }

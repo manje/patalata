@@ -33,8 +33,10 @@
           <summary>Equipos</summary>
           <ul class="bg-base-100 rounded-t-none p-2">
             @if (Auth::user()->allTeams()->count() > 0)
+                @if (Auth::user()->currentTeam)
                 <li><a href="{{ route('teams.show', Auth::user()->currentTeam->id) }}">{{ Auth::user()->currentTeam->name }}</a></li>
                 <li><a href="{{ route('teams.show', Auth::user()->currentTeam->id) }}">Configuración</a></li>
+                @endif
                 @if (Auth::user()->allTeams()->count() > 1)
                     <li>Cambiar Equipo</li>
                     @foreach (Auth::user()->allTeams() as $team)
@@ -44,10 +46,10 @@
                                 @csrf
                                 <input type="hidden" name="team_id" value="{{ $team->id }}">
 
+                                    @if (Auth::user()->currentTeam)
                                     @if (Auth::user()->isCurrentTeam($team))
                                         <i class="fas fa-check"></i>
-                                    
-                                    
+                                    @endif
                                     @endif
 
                                 <a href="#" @click.prevent="$root.submit();">{{ $team->name }}</a>
