@@ -17,7 +17,7 @@
                         @else
                             toot
                         @endif
-                         nuevos.</span>
+                        nuevos.</span>
                     <span wire:target="VerNuevas" wire:loading.delay class="loading loading-ring loading-md"></span>
                 </div>
             </div>
@@ -25,9 +25,9 @@
             @foreach ($timeline as $status)
                 @if (isset($status['id']))
                     <livewire:fediverso.activity 
-                        :activity="$status" 
+                        :activity="$status['act']" 
                         :diferido="false" 
-                        :key="$status['id'] . $serial" 
+                        wire:key="{{ md5($status['id'] . $serial) }}" 
                     />
                 @endif
             @endforeach

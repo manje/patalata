@@ -2,8 +2,8 @@ Rehacer Denuncias
 Guardar replys
 Responder
 Notas privadas
-Recibir respuestas
 Imagen/banner superior en perfiles de usuario/teams
+Bio en perfil de usuarios
 Gestión de colecciones (sportar add, cachear colección...)
 Participar de Encuestas (ahora solo se ven)
 Visualización de cards de url
@@ -20,3 +20,4 @@ SharedInbox
 Federar miembros de Equipos
 Foros de discusión privados dentro de equipos
 Foros de discusión públicos dentro de localidades
+Meter los ficheros de la carpeta jsonldsignature dentro de app, y que funcione igual

@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
+use App\ActivityPub\LDSignature;
+
 use Request as Rq;
 use App\Traits\ModelFedi;
 
@@ -39,14 +41,30 @@ class ActivityPubUserController extends Controller
 
     public function inbox(Request $request, $slug): JsonResponse
     {
-        // Busca al usuario por su slug
+        $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
         $user=ActivityPub::GetIdentidadBySlug($slug);
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
         if (!$this->verifySignature($user,$activity,$path)) 
         {
+            if (!isset($activity['signature']))
+                return response()->json(['error' => 'Invalid signature'], 401);
+            $sig=new LDSignature();
+            $actor=ActivityPub::GetActorByUrl($user,$activity['actor']);
+            if (!(isset($actor['publicKey'])))
+            {
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
+            $res=$sig->verify($activity,$actor['publicKey']['publicKeyPem']);
+            if ($res)
+            {
+                Log::info("Valida\tsignature LD t $activity[type] $actor[id] ");
+                return ActivityPub::InBox($user,$activity);
+            }
+            Log::info("Inválida\tsignature LD $activity[type] $actor[id] ");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
+        Log::info("Válida signature $path ".$user->slug." ".$signatureData['algorithm']);
         return ActivityPub::InBox($user,$activity);
     }
 
@@ -148,6 +166,11 @@ class ActivityPubUserController extends Controller
         return $this->Collection($list,$url);
 
     }
+
+
+
+
+
 
 }
 

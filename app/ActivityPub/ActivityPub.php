@@ -14,6 +14,7 @@ use App\Models\Like;
 use App\Models\Announce;
 use App\Models\Block;
 use App\Models\Member;
+use App\Models\Reply;
 
 
 use Illuminate\Routing\Router;
@@ -63,6 +64,7 @@ class ActivityPub
     static function GetActorByUrl($user,$url)
     {
         if(!\p3k\url\is_url($url)) return false;
+        // Si el actor se borra 
         $key="-actor-".$url;
         if ($out=Cache::get($key)) 
         {
@@ -83,7 +85,7 @@ class ActivityPub
             return $out;
         }
             
-        Cache::put($key,$out,3600*24*5);
+        Cache::put($key,$out,3600*24);
         return $out;
     }
 
@@ -417,6 +419,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
+
             $txt="InBox ".$user->slug." $activity[type]: $activity[actor]";
             #Log::info(print_r($activity,1));
             if (isset($activity['object']))
@@ -507,13 +510,43 @@ Este es un ejemplo de lo que nos hemos encontrado
             }
             case 'Create':
             {
+                // Comprobamos que el actor es el mismo que attributedTo
+                if (is_string($activity['object']['attributedTo']))
+                    $at=$activity['object']['attributedTo'];
+                else
+                    $at=$activity['object']['attributedTo']['id'];
+                if ($at!=$activity['actor'])
+                {
+                    Log::error("Actor $activity[actor] es distinto a  attributedTo $at");
+                    return response()->json(['error' => 'actor y attributedTo distintos'],401);
+                }
 
                 // Aqui gestionamos la actividad si es pública, esto es, según el tipo si queremos añadirl a colecciones publicas, incluir un evento en la agenda, procesar HastTags, etc.
                     
+                    
+                // Procesamos replies
+                
+                if (isset($activity['object']['inReplyTo']))
+                {
+                   Cache::put($activity["object"]['id'],$activity["object"],3600*24*15);
+                   $object=$activity['object']['inReplyTo'];
+                   $reply=$activity['object'];
+                   if (is_array($object)) $object=$object['id'];
+                   if (is_array($reply)) $reply=$reply['id'];
+                   Reply::create([
+                       'object'=>$object,
+                       'reply'=>$reply
+                   ]);
+                }
+                   
+
+                
                 // Compruebo si el actor está entre los seguidos del usuario
+                
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
                 if (is_null($seguido))
                 {
+                    /*
                     if (isset($activity['object']['inReplyTo']))
                     {
                         // Como nos notifican de un nuevo comentario, borramos los replies o el propio objeto, a esto hay que darle una vuelta
@@ -535,6 +568,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                         Log::info(print_r($activity,1));
                         Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id . 'y nos está mandando cosas');
                     }
+                    */
                     return response()->json(['message' => 'Accept'],202);
                 }
                 else
@@ -598,18 +632,21 @@ Este es un ejemplo de lo que nos hemos encontrado
             }
             case 'Delete':
             {
+                // se puede borra un objeto o un actor, y el actor implica más operaciones que simplemente marcarlo como Tombstone
+                Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*30);
                 if ($activity['actor']==$activity['object'])
                 {
-                    Cache::put($activity['object'],['error'=>'Deleted'],3600*24*30);
+                    #Log::info(print_r($activity,1));
                     TimeLine::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
+                    // hay que eliminar followers y followings, blocks, members, Announces, likes, 
                     return response()->json(['message' => 'Accepted'],202);
                 }
-                if (isset($activity['object']['id']))
-                {
-                    Timeline::where('activity', $activity['object']['id'])->where('actor_id',$activity['actor'])->delete();
-                    return response()->json(['message' => 'Accepted'],202);
-                }
-                Log::info('Petición de Delete '.print_r($activity,1));
+                // Para borrar no necesito el contenido del objeto, solo el id
+                if (is_array($activity['object'])) $activity['object']=$activity['object']['id'];
+                Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*30);
+                Timeline::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
+                Reply::where('object',$activity['object'])->orWhere('reply',$activity['object'])->delete();
+                // hay que borrar nuestros likes, members y announces a este objeto                
                 return response()->json(['message' => 'Accepted'],202);
             }
             case 'Update':
