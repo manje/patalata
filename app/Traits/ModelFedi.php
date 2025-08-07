@@ -281,8 +281,9 @@ trait ModelFedi
                 $a=$user->GetActivity()['id'];
             }
         }
+        $ap=new ActivityPub();
         if ($full)
-          return ActivityPub::GetActorByUrl(null,$a);
+          return $ap->GetActorByUrl($a);
         else
           return $a;
     }

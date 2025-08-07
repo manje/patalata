@@ -11,39 +11,42 @@ class Seguir extends Component
 {
     public $actor;
     public $siguiendo;
+    protected $identidad;
+    protected $ap;
 
     public function mount($actor)    
     {
-        Log::info(print_r($this->actor,1));
         if (is_string($actor)) 
-            $this->actor=ActivityPub::GetActorByUrl(ActivityPub::GetIdentidad(), $actor);
+            $this->actor=$this->ap->GetActorByUrl($actor);
         else
             $this->actor=$actor;
-        Log::info(print_r($this->actor,1));
         $this->siguiendo=$this->siguiendo();
     }
 
     public function siguiendo()
     {
-        $user=ActivityPub::GetIdentidad();
-        if ($user)
-            return ActivityPub::siguiendo($user, $this->actor);
+        $this->identidad=ActivityPub::GetIdentidad();
+        $this->ap=new ActivityPub($this->identidad);
+        if ($this->identidad)
+            return $this->ap->siguiendo($this->actor);
         return false;
     }
 
     public function dejarDeSeguir()
     {
-        $user=ActivityPub::GetIdentidad();
-        if ($user)
-            if (ActivityPub::dejarDeSeguir($user, $this->actor))
+        $this->identidad=ActivityPub::GetIdentidad();
+        $this->ap=new ActivityPub($this->identidad);
+        if ($this->identidad)
+            if ($this->ap->dejarDeSeguir($this->actor))
                 $this->siguiendo=false;
     }
 
     public function seguir()
     {
-        $user=ActivityPub::GetIdentidad();
-        if ($user)
-            if (ActivityPub::seguir($user, $this->actor))
+        $this->identidad=ActivityPub::GetIdentidad();
+        $this->ap=new ActivityPub($this->identidad);
+        if ($this->identidad)
+            if ($this->ap->seguir($this->actor))
                 $this->siguiendo=true;
     }
 

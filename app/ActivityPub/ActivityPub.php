@@ -40,10 +40,16 @@ use DateTime;
 class ActivityPub 
 {
 
-    static function GetIdentidad()
-    {
-        $user=Auth::user();
+    public $user=null;
 
+    public function __construct($user=null)
+    {
+        $this->user = $user;
+    }
+
+    static function GetIdentidad($user=null)
+    {
+        if (is_null($user)) $user=Auth::user();
         if (!$user) return false;
         if ($user->current_team_id)
         {
@@ -53,6 +59,9 @@ class ActivityPub
         return $user;
     }
 
+
+
+
     static function GetIdentidadBySlug($slug)
     {
         $user=User::where('slug',$slug)->first();
@@ -61,7 +70,7 @@ class ActivityPub
         return $user;
     }
 
-    static function GetActorByUrl($user,$url)
+    public function GetActorByUrl($url)
     {
         if(!\p3k\url\is_url($url)) return false;
         // Si el actor se borra 
@@ -70,11 +79,11 @@ class ActivityPub
         {
           if (isset($out['userfediverso'])) return $out;
         }
-        $out=self::GetObjectByUrl($user,$url);
+        $out=$this->GetObjectByUrl($url);
         if (is_null($out)) return ['error'=>'response null'];
         if (isset($out['error'])) return $out;
-        if (isset($out['following'])) $out['countfollowing']=self::GetColeccion($user,$out['following'],true);
-        if (isset($out['followers'])) $out['countfollowers']=self::GetColeccion($user,$out['followers'],true);
+        if (isset($out['following'])) $out['countfollowing']=$this->GetColeccion($out['following'],true);
+        if (isset($out['followers'])) $out['countfollowers']=$this->GetColeccion($out['followers'],true);
         $d=explode("/",$url)[2];
         if (isset($out['preferredUsername']))
             $out['userfediverso']=$out['preferredUsername']."@$d";
@@ -84,13 +93,12 @@ class ActivityPub
             #$out['error']='Actor inválido';
             return $out;
         }
-            
         Cache::put($key,$out,3600*24);
         return $out;
     }
 
 
-    static function GetObjectByUrl($user,$url,$cache=false)
+    public function GetObjectByUrl($url,$cache=false)
     {
         if ($cache===false) $cache=60*24*7;
         // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
@@ -121,7 +129,7 @@ class ActivityPub
         #echo "    $num   ";
         if ($num++>100) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
-        $out=self::GetUrlFirmado($user,$url);
+        $out=$this->GetUrlFirmado($url);
         if (!(is_array($out)))
         {
             $out=['error'=>"No es array: $url - $out"];
@@ -155,9 +163,8 @@ class ActivityPub
         return $out;
     }
 
-    static function GetActorByUsername($user,$username)
+    public function GetActorByUsername($username)
     {
-        Log::info("buscando $username ");
         $username=trim($username);
         if (strlen($username<3)) return false;
         if ($username[0]=='@')
@@ -178,7 +185,7 @@ class ActivityPub
                 $idcache=$url;
                 $actor=Cache::get($idcache);
                 if (!$actor)
-                    $actor=self::GetUrlFirmado($user,$url);
+                    $actor=$this->GetUrlFirmado($url);
                 if ($actor)
                 {
                     Cache::put($idcache,$actor,3600*24*30);
@@ -195,38 +202,35 @@ class ActivityPub
                     }
                     if ($url)
                     {
-                        $actor=self::GetActorByUrl($user,$url);
+                        $actor=$this->GetActorByUrl($url);
                         if (!(isset($actor['error'])))
                             Cache::put($dica,$actor,3600*24*15);
                         return $actor;
                     }
                 }
             }
-            Log::error('Error al obtener el actor de '.$username);
             return false;
         }
-
     }
 
-    static function seguir($user,$actor)
+    public function seguir($actor)
     {
-
-        if ($actor['id']==$user->GetActivity()['id'])
+        if ($actor['id']==$this->user->GetActivity()['id'])
             return false;
         $Follow = new Apfollowing();
         $Follow->object = $actor['id'];
-        $Follow->actor = $user->GetActivity()['id'];
+        $Follow->actor = $this->user->GetActivity()['id'];
         $Follow->save();
         $id=$Follow->id;
         $activity=[
             '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$id,
+            'id' => route('activitypub.actor', ['slug' => $this->user->slug]).'/'.$id,
             'type' => 'Follow',
-            'actor' => route('activitypub.actor', ['slug' => $user->slug]),
+            'actor' => route('activitypub.actor', ['slug' => $this->user->slug]),
             'object' => $actor['id']
         ];
         $activity=json_encode($activity);
-        $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
+        $response=$this->EnviarActividadPOST($activity,$actor['inbox']);
         if (((string)$response)[0]!='2')
         {            
             $Follow->delete();
@@ -235,27 +239,26 @@ class ActivityPub
         return true;
     }
     
-    static function dejarDeSeguir($user,$actor)
+    public function dejarDeSeguir($actor)
     {
-        $Follow = Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->first();
+        $Follow = Apfollowing::where('object', $actor['id'])->where('actor', $this->user->GetActivity()['id'])->first();
         if ($Follow)
         {
             $id=$Follow->id;
-            Log::info('Dejar de seguir a '.$actor['id'].' nº registro '.$id);
-            Apfollowing::where('object', $actor['id'])->where('actor', $user->GetActivity()['id'])->delete();
+            Apfollowing::where('object', $actor['id'])->where('actor', $this->user->GetActivity()['id'])->delete();
             $activity=[
                 '@context' => 'https://www.w3.org/ns/activitystreams',
-                'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$id,
+                'id' => route('activitypub.actor', ['slug' => $this->user->slug]).'/'.$id,
                 'type' => 'Undo',
-                'actor' => route('activitypub.actor', ['slug' => $user->slug]),
+                'actor' => route('activitypub.actor', ['slug' => $this->user->slug]),
                 'object' => [
                     'type' => 'Follow',
-                    'actor' => route('activitypub.actor', ['slug' => $user->slug]),
+                    'actor' => route('activitypub.actor', ['slug' => $this->user->slug]),
                     'object' => $actor['id']
                 ]
             ];
             $activity=json_encode($activity);
-            $response=self::EnviarActividadPOST($user,$activity,$actor['inbox']);
+            $response=$this->EnviarActividadPOST($activity,$actor['inbox']);
             if (((string)$response)[0]!='2')
             {
                 Log::info("ERROR hay que controlar aqui codigo respuesta $response y mandarlo a un job");
@@ -266,42 +269,42 @@ class ActivityPub
         return false;
     }
 
-    static function siguiendo($user,$actor)
+    public function siguiendo($actor)
     {
         $id=$actor['id'];
-        $Follow = Apfollowing::where('object', $id)->where('actor', $user->GetActivity()['id'])->first();
+        $Follow = Apfollowing::where('object', $id)->where('actor', $this->user->GetActivity()['id'])->first();
         if ($Follow)
             return true;
         return false;
     }
 
-    static function tesigue($user,$actor)
+    public function tesigue($actor)
     {
         $id=$actor['id'];
-        $Follow = Apfollower::where('object', $id)->where('actor', $user->GetActivity()['id'])->first();
+        $Follow = Apfollower::where('object', $id)->where('actor', $this->user->GetActivity()['id'])->first();
         if ($Follow)
             return true;
         return false;
     }
 
-    static function GetOutbox($user,$actor,$limite=50)
+    public function GetOutbox($actor,$limite=50)
     {
 
         if (!(isset($actor['outbox'])))
             return false;
         $outbox=$actor['outbox'];
-        $outbox=self::GetUrlFirmado($user,$outbox);
+        $outbox=$this->GetUrlFirmado($this->user,$outbox);
         if (isset($outbox['orderedItems']))
             return $outbox['orderedItems'];
         $list=[];
         if (isset($outbox['first']))
         {
-            $outbox=self::GetUrlFirmado($user,$outbox['first']);
+            $outbox=$this->GetUrlFirmado($this->user,$outbox['first']);
             if (!(isset($outbox['orderedItems']))) Log::info('489974857349'.print_r($outbox,1));
             $list=$outbox['orderedItems'];
             while (isset($outbox['next']))
             {
-                #$outbox=self::GetUrlFirmado($user,$outbox['next']);
+                #$outbox=$this->GetUrlFirmado($this->user,$outbox['next']);
                 $list=array_merge($list,$outbox['orderedItems']);
                 if (count($list)>$limite)
                     return array_slice($list,0,$limite);
@@ -311,14 +314,88 @@ class ActivityPub
         return $list;
     }
 
-    static function GetColeccion($user,$idlist,$solocount=false,$limite=false)
+    public function GetCollection($idlist)
     {
-        #Log::info("get coleccion $idlist desde user ".$user->slug);
+        $idcache="gc ".$idlist;
+        $num=Cache::get($idcache);
+        if ($num) return $num;
+        $obj=$this->GetObjectByUrl($idlist,5); // 5 minutos de ttl
+        if (array_is_list($obj))
+        {
+            Cache::put($idcache,count($obj),60*5);
+            return count($obj);
+        }
+        if (isset($obj['totalItems']))
+        {
+            Cache::put($idcache,$obj['totalItems'],60*5);
+            return $obj['totalItems'];
+        }
+        return false;
+    }
+
+    public function GetListCollection($idlist,$limite=0)
+    {
+        // esta función estaría guay que guardara en cache persistente y comprobara solo si hay nuevos
+        $idcache="list collection ".$idlist;
+        $out=Cache::get($idcache);
+        if ($out) return $out;
+        $cachetmp="persistente $idlist";
+        $cachetmp=Cache::get($cachetmp);
+        if (!(is_array($cachetmp))) 
+            $list=[];
+        else
+            $list=$cachetmp;
+        $col=$this->GetObjectByUrl($idlist,5);
+        // esto tiene tipo collection y un first
+        if ($col['type']!='Collection')
+        {
+            Log::error(print_r($col,1));
+            return [];
+        }
+
+        if (isset($col['first']))
+        {
+            $seguir=true;
+            $col=$this->GetObjectByUrl($col['first'],5);
+            while ( (count($col['items'])>0)  &&  ($seguir))
+            {
+                if ($col['type']!='CollectionPage')
+                {
+                    Log::error(print_r($col,1));
+                    return [];
+                }
+                foreach ($col['items'] as $item)
+                {
+                    if (is_array($item)) $item=$item['id'];
+                    if (in_array($item,$list))
+                        $seguir=false; // en cuanto me encuentro un elemento que ya teníamos significa que estamos sincronizados
+                    else
+                        $list=array_merge([$item],$list);
+                }
+                if (!(isset($col['next']))) $seguir=false;
+                if (!(isset($col['next']))) Log::info(" me imagino que es normal pq llegadomos al final ".print_r($col,1));
+                if ($seguir)
+                {
+                    $col=$this->GetObjectByUrl($col['next'],5);
+                }
+            }
+        }
+        Cache::put($cachetmp,$list,60*60*24*30*3);
+        Cache::put($idcache,$list,60*2);
+        return $list;
+    }
+
+    public function GetColeccion($idlist,$solocount=false,$limite=false)
+    {
         if (is_string($idlist))
-            $col=self::GetObjectByUrl($user,$idlist,3);
+            $col=$this->GetObjectByUrl($idlist,3);
         else
             $col=$idlist;
-        if (array_is_list($col)) 
+        if (!is_array($col))
+        {
+          Log::error("No entiendo porque entramos aquí, idlist es $idlist");
+        }
+        if (array_is_list($col))
         {
             if ($solocount) return count($col);
             return $col;
@@ -331,7 +408,7 @@ class ActivityPub
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
                 $x=$col['first'];
-                $col=self::GetObjectByUrl($user,$col['first']);
+                $col=$this->GetObjectByUrl($col['first']);
                 if (isset($col['error']))
                 {
                     if ($solocount) return "?";
@@ -345,7 +422,7 @@ class ActivityPub
                     $items=$col['orderedItems'];
                 while (isset($col['next']))
                 {
-                    $col=self::GetObjectByUrl($user,$col['next'],10);
+                    $col=$this->GetObjectByUrl($col['next'],10);
                     if (isset($col['error']))
                     {
                         if ($solocount) return "?";
@@ -401,6 +478,7 @@ Este es un ejemplo de lo que nos hemos encontrado
         }
         else
         {
+
             Log::info($idlist);
             Log::info(print_R($col,1));
             Log::error('3459749543');
@@ -409,7 +487,7 @@ Este es un ejemplo de lo que nos hemos encontrado
     }
 
 
-    static function InBox($user,$activity)
+    public function InBox($activity)
     {
         // Aquí llega la petición con la firma verificada
         #Log::info(print_r($activity,1));
@@ -420,7 +498,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
 
-            $txt="InBox ".$user->slug." $activity[type]: $activity[actor]";
+            $txt="InBox ".$this->user->slug." $activity[type]: $activity[actor]";
             #Log::info(print_r($activity,1));
             if (isset($activity['object']))
                 if (is_string($activity['object']))
@@ -428,32 +506,30 @@ Este es un ejemplo de lo que nos hemos encontrado
                 else
                     if (isset($activity['object']['id']))
                         $txt.="\t".$activity['object']['id'];
-
-            Log::info($txt);
             switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
-                $actor = self::GetActorByUrl($user,$url);
-                Apfollower::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
+                $actor = $this->GetActorByUrl($url);
+                Apfollower::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->delete();
                 $apFollow = new Apfollower();
                 $apFollow->object = $activity['actor'];
-                $apFollow->actor = $user->GetActivity()['id'];
+                $apFollow->actor = $this->user->GetActivity()['id'];
                 $apFollow->save();
                 $activity=[
                     '@context' => 'https://www.w3.org/ns/activitystreams',
                     // esta ruta no existe pero es única
-                    'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$apFollow->id,
+                    'id' => route('activitypub.actor', ['slug' => $this->user->slug]).'/'.$apFollow->id,
                     'type' => 'Accept',
-                    'actor' => route('activitypub.actor', ['slug' => $user->slug]),
+                    'actor' => route('activitypub.actor', ['slug' => $this->user->slug]),
                     'object' => $activity
                 ];
-                Queue::push(new EnviarActividadToActor($user,$actor['id'],$activity));
+                Queue::push(new EnviarActividadToActor($this->user,$actor['id'],$activity));
                 return response()->json(['message' => 'Follow request received'],202);
             case 'Undo':
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Apfollower::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
+                        Apfollower::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Follow request received'],202);
                     case 'Announce':
                         Timeline::where('actor_id', $activity['actor'])->where('activity',$activity["object"]["id"])->delete();
@@ -476,13 +552,13 @@ Este es un ejemplo de lo que nos hemos encontrado
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->update(['accept' => true]);
+                        Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->update(['accept' => true]);
                         return response()->json(['message' => 'Accept'],202);
                     case 'Invite':
-                        Members::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->update(['status' => 'editor']);
+                        Members::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->update(['status' => 'editor']);
                         return response()->json(['message' => 'Accept'],202);
                     case 'Join':
-                        Members::where('actor', $activity['actor'])->where('object', $user->GetActivity()['id'])->update(['status' => 'editor']);
+                        Members::where('actor', $activity['actor'])->where('object', $this->user->GetActivity()['id'])->update(['status' => 'editor']);
                         return response()->json(['message' => 'Accept'],202);
                     default:
                         Log::info(print_r($activity,1));
@@ -494,13 +570,13 @@ Este es un ejemplo de lo que nos hemos encontrado
             {
                 switch ($activity["object"]["type"]) {
                     case 'Follow':
-                        Apfollowing::where('actor', $activity['actor'])->where('object', $user->GetActivity()['id'])->delete();
+                        Apfollowing::where('actor', $activity['actor'])->where('object', $this->user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Accept'],202);
                     case 'Invite':
-                        Members::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->delete();
+                        Members::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Accept'],202);
                     case 'Join':
-                        Members::where('actor', $activity['actor'])->where('object', $user->GetActivity()['id'])->delete();
+                        Members::where('actor', $activity['actor'])->where('object', $this->user->GetActivity()['id'])->delete();
                         return response()->json(['message' => 'Accept'],202);
                     default:
                         Log::info(print_r($activity,1));
@@ -522,56 +598,29 @@ Este es un ejemplo de lo que nos hemos encontrado
                 }
 
                 // Aqui gestionamos la actividad si es pública, esto es, según el tipo si queremos añadirl a colecciones publicas, incluir un evento en la agenda, procesar HastTags, etc.
-                    
-                    
-                // Procesamos replies
+                // La guardamos, falta procesarla para discover
+                // Ver si está ya en cache nos puede servir para saber si ya está procesada, ya que una misma actividad puede llegar varias veces a distintos actores subscritos
+                Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);
                 
+                
+                // Procesamos replies                
                 if (isset($activity['object']['inReplyTo']))
                 {
-                   Cache::put($activity["object"]['id'],$activity["object"],3600*24*15);
                    $object=$activity['object']['inReplyTo'];
                    $reply=$activity['object'];
                    if (is_array($object)) $object=$object['id'];
                    if (is_array($reply)) $reply=$reply['id'];
-                   Reply::create([
+                   Reply::firstOrCreate([
                        'object'=>$object,
                        'reply'=>$reply
                    ]);
+                   // ############## xxxxxxxxxxxxxxx esto es solo para debug
+                   $tmp=$this->GetReplys($object);
                 }
-                   
-
                 
                 // Compruebo si el actor está entre los seguidos del usuario
-                
-                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
-                if (is_null($seguido))
-                {
-                    /*
-                    if (isset($activity['object']['inReplyTo']))
-                    {
-                        // Como nos notifican de un nuevo comentario, borramos los replies o el propio objeto, a esto hay que darle una vuelta
-                        $url=$activity['object']['inReplyTo'];
-                        $publicacion=self::GetObjectByUrl($user,$url);
-                        if (!is_null($publicacion))
-                        {   
-                            $replies=$publicacion['replies'];
-                            Log::info('borro cache de replies');
-                            if (is_array($replies))
-                                Cache::forget($url);
-                            else
-                                Cache::forget($replies);
-                        }
-
-                    }
-                    else
-                    {
-                        Log::info(print_r($activity,1));
-                        Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id . 'y nos está mandando cosas');
-                    }
-                    */
-                    return response()->json(['message' => 'Accept'],202);
-                }
-                else
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
+                if ($seguido)
                 {
                     // un create de un actor a el que seguimos lo incluimos en el timeline siempre, si después la actividad es erronea o lo que sea lo vermos después
                     if ( $activity["object"]["attributedTo"] != $activity['actor'] )
@@ -580,38 +629,29 @@ Este es un ejemplo de lo que nos hemos encontrado
                         return response()->json(['message' => 'Bad Request'],400);
                     }
                     $line= new Timeline();
-                    $line->user=$user->GetActivity()['id'];
+                    $line->user=$this->user->GetActivity()['id'];
                     $line->actor_id=$activity['actor'];
                     $line->activity=$activity["object"]['id'];
-                    // guardo en cache la actividad
-                    Cache::put($activity["object"]['id'],$activity["object"],3600*24*15);
-                    
-                    
-                    // Aqui gestionamos la actividad en función del tipo
-                    switch ($activity["object"]["type"]) {
-                        case 'Note':
-                            break;
-                    }
-                    return response()->json(['message' => 'Accept'],202);
                 }
+                return response()->json(['message' => 'Accept'],202);
             }
             case 'Announce':
             {
-                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if ($seguido)
                 {
                     $line= new Timeline();
-                    $line->user=$user->GetActivity()['id'];
+                    $line->user=$this->user->GetActivity()['id'];
                     $line->activity=$activity['id'];
                     $line->actor_id=$activity['actor'];
-                    Cache::put($activity['id'],$activity,3600*8);
+                    Cache::put($activity['id'],$activity,3600*30);
                     $line->save();
                 }
                 if (is_array($activity['object']))
                     $id=$activity['object']['id'];
                 else
                     $id=$activity['object'];    
-                if (self::IsLocal($id))
+                if ($this->IsLocal($id))
                 {
                     Announce::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
                 }
@@ -636,7 +676,6 @@ Este es un ejemplo de lo que nos hemos encontrado
                 Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*30);
                 if ($activity['actor']==$activity['object'])
                 {
-                    #Log::info(print_r($activity,1));
                     TimeLine::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
                     // hay que eliminar followers y followings, blocks, members, Announces, likes, 
                     return response()->json(['message' => 'Accepted'],202);
@@ -650,27 +689,13 @@ Este es un ejemplo de lo que nos hemos encontrado
                 return response()->json(['message' => 'Accepted'],202);
             }
             case 'Update':
-                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
-                if (is_null($seguido))
-                    Log::warning('El actor ' . $activity['actor'] . ' NO es seguido por el usuario ' . $user->id);
-                else
+                if (isset($activity['object']['id']))
                 {
-                    if (isset($activity['object']['id']))
-                    {
-                        Cache::forget($activity['object']['id']);
-                        Cache::forget($user->id.'-'.$activity['object']['id']);
-                        Timeline::where('activity', $activity['object']['id'])->where('actor_id',$activity['actor'])->where('user',$user->GetActivity()['id'])->delete();
-                        $line= new Timeline();
-                        $line->user=$user->GetActivity()['id'];
-                        $line->actor_id=$activity['actor'];
-                        $line->activity=$activity["object"]['id'];
-                        Cache::put($activity["object"]['id'],$activity["object"],3600*8);
-                        $line->save();
-                        return response()->json(['message' => 'Accept'],202);
-                    }
-                    Log::info('Update activity: '.print_r($activity,1));
+                    Cache::forget($activity['object']['id']);
+                    Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);
                 }
-                return response()->json(['message' => 'No implementado'],501);
+                Log::info('Update activity: '.print_r($activity,1));
+                return response()->json(['message' => 'Ok'],200);
             case 'Invite':
                 Member::create([
                     'actor'=>$activity['actor'],
@@ -689,19 +714,61 @@ Este es un ejemplo de lo que nos hemos encontrado
             default:
                 Log::info('Unknown activity type root: ' . $activity['type']);
                 Log::info(print_r($activity,1));
+                Log::error("esto no es normal2");
+                throw new \Exception('no es normal');
                 return response()->json(['message' => 'Unknow activity '.$activity['type']],501);
+                
         }
         Log::info(print_r($activity,1));
         Log::info('Aquí no deberíamos llegar nunca, debemos devolver siempre una respuesta http');
         return true;
     }
+    
+    public function GetReplys($id)
+    {
+        // xxxxxxxxxxxxxxxxxxxxxxx
+        // dato el id de un objeto, saca todas las replies
+        // tiene que mirar en la colección y comparar con nuestra base de datos
+        Log::info("registro reply a objeto $id");
+        $list=Reply::where('object',$id)->orderBy('id','desc')->get();
+        $idsr=[];
+        foreach ($list as $v)
+        {
+            $idsr[]=$v->reply;
+            #Log::info(print_R($v,1));
+        }
+        Log::info("hay ".$list->count()." res en bd");
+        $object=$this->GetObjectByUrl($id);
+        if (!(isset($object['replies']))) return [];
+        $object=$object['replies'];
+        if (is_array($object)) $object=$object['id'];
+        $list=$this->GetListCollection($object);
+        Log::info(" lsit es 2343298 ".print_r($list,1));
+        $sincronizado=true;
+        foreach ($list as $v)
+        {
+            if (is_array($v)) $v=$v['id'];
+            if (!in_array($v,$idsr))
+            {
+                $sincronizado=false;
+                Log::info("Añado a colección de replys $v de $id que no lo teníamos");
+                Reply::create([
+                  'object'=>$id,  
+                  'reply'=>$v
+                ]);
+            }
+        }
+        if (!$sincronizado)
+            $list=Reply::where('object',$id)->orderBy('id','desc')->get();
+        return $list;
+    }
 
 
 
-    static function EnviarActividadPOST($user,$json,$inbox)
+    public function EnviarActividadPOST($json,$inbox)
     {
         if(!\p3k\url\is_url($inbox)) return false; 
-        $headers = HTTPSignature::sign($user, $json, $inbox);
+        $headers = HTTPSignature::sign($this->user, $json, $inbox);
         $ch = curl_init($inbox);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -713,10 +780,10 @@ Este es un ejemplo de lo que nos hemos encontrado
         return $codigo;
     }
 
-    static function GetUrlFirmado($user,$url)
+    public function GetUrlFirmado($url)
     {
         if(!\p3k\url\is_url($url)) return false; 
-        if (!($user))
+        if (!($this->user))
         {
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -732,7 +799,7 @@ Este es un ejemplo de lo que nos hemos encontrado
         }
         else
         {
-	        $headers = HTTPSignature::sign($user, false, $url);
+	        $headers = HTTPSignature::sign($this->user, false, $url);
 	        #print_R($headers);
 	        $ch = curl_init($url);
 	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -792,11 +859,10 @@ Este es un ejemplo de lo que nos hemos encontrado
             return false;
     }
 
-    static function like($user,$id)
+    public function like($id)
     {
-        Log::info("like a $id");
-        $actor=$user->GetActivity()['id'];
-        $obj=self::GetObjectByUrl($user,$id);
+        $actor=$this->user->GetActivity()['id'];
+        $obj=$this->GetObjectByUrl($id);
         if (isset($obj['error']))
         {
             Log::info("error: ".print_r($obj,1));
@@ -804,13 +870,13 @@ Este es un ejemplo de lo que nos hemos encontrado
         }
         $activity=[
             '@context' => 'https://www.w3.org/ns/activitystreams',
-            'id' => route('activitypub.actor', ['slug' => $user->slug]).'/'.$id,
+            'id' => route('activitypub.actor', ['slug' => $this->user->slug]).'/'.$id,
             'type' => 'Like',
             'actor' => $actor,
             'object' => $id
         ];
         $activity=json_encode($activity);
-        $response=self::EnviarActividadPOST($user,$activity,$obj['inbox']);
+        $response=$this->EnviarActividadPOST($activity,$obj['inbox']);
         if (((string)$response)[0]!='2')
         {
             return false;

@@ -43,14 +43,15 @@ class ActivityPubUserController extends Controller
     {
         $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
         $user=ActivityPub::GetIdentidadBySlug($slug);
+        $ap=new ActivityPub($user);
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
-        if (!$this->verifySignature($user,$activity,$path)) 
+        if (!$this->verifySignature($activity,$path))
         {
             if (!isset($activity['signature']))
                 return response()->json(['error' => 'Invalid signature'], 401);
             $sig=new LDSignature();
-            $actor=ActivityPub::GetActorByUrl($user,$activity['actor']);
+            $actor=$ap->GetActorByUrl($user,$activity['actor']);
             if (!(isset($actor['publicKey'])))
             {
                 return response()->json(['error' => 'Invalid signature'], 401);
@@ -59,13 +60,13 @@ class ActivityPubUserController extends Controller
             if ($res)
             {
                 Log::info("Valida\tsignature LD t $activity[type] $actor[id] ");
-                return ActivityPub::InBox($user,$activity);
+                return $ap->InBox($user,$activity);
             }
             Log::info("Inválida\tsignature LD $activity[type] $actor[id] ");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
         Log::info("Válida signature $path ".$user->slug." ".$signatureData['algorithm']);
-        return ActivityPub::InBox($user,$activity);
+        return $ap->InBox($activity);
     }
 
     public function following($slug): JsonResponse
@@ -95,8 +96,9 @@ class ActivityPubUserController extends Controller
     }
 
 
-    private function verifySignature($user,$activity,$path): bool
+    private function verifySignature($activity,$path): bool
     {
+        $ap=new ActivityPub(null);
         if(!Rq::header('signature')) {
           return response()->json([
             'error' => 'Missing Signature header'
@@ -108,7 +110,7 @@ class ActivityPubUserController extends Controller
             return false;
     
         $url=$activity['actor'];
-        $actor=ActivityPub::GetActorByUrl($user,$url);
+        $actor=$ap->GetActorByUrl($url);
         if (!(isset($actor["publicKey"])))
             return false;
 

@@ -6,7 +6,7 @@
             Te puden seguir, y puedes seguir a otros usuarios de todo el Fediverso.
         @auth
         </p> <p>
-            Tu usuario en el fediverso es {{ Auth::user()->slug }}{{ "@" }}{{ request()->getHost() }} , 
+            Tu usuario en el fediverso es {{ $userfediverso->slug }}{{ "@" }}{{ request()->getHost() }} , 
             pueden seguirte en otras instancias.
         @endauth
         </p> <p>

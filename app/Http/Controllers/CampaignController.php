@@ -26,6 +26,7 @@ class CampaignController extends Controller
     public function show(Request $request, $slug)
     {
         $userap=ActivityPub::GetIdentidad();
+        $ap=new ActivityPub($userap);
         $id=explode('@',$slug);
         Log::info(print_r($id,1));
         if (count($id)==2)
@@ -40,7 +41,7 @@ class CampaignController extends Controller
             else
             {
                 Log::info('b');
-                $campaign = ActivityPub::GetActorByUsername($userap, $slug);
+                $campaign = $ap->GetActorByUsername($slug);
                 Log::info(print_r($campaign,1));
                 $modelo=false;
             }
@@ -63,13 +64,13 @@ class CampaignController extends Controller
         if (isset($campaign['members']))
         {
             Log::info('members');
-            $list=ActivityPub::GetColeccion($userap,$campaign['members']);
+            $list=$ap->GetColeccion($campaign['members']);
             if (is_array($list))
             {
                 Log::info('array');
                 foreach ($list as $url)
                 {
-                    $actor=ActivityPub::GetActorByUrl($userap,$url);
+                    $actor=$ap->GetActorByUrl($userap,$url);
                     if (is_array($actor))
                         if(isset($actor['userfediverso']))
                             $members[]= $actor;

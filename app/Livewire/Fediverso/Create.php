@@ -32,15 +32,12 @@ class Create extends Component
     
     public function submit()
     {
-        Log::info("submit");
         $this->validate([
             'text' => 'required|string|max:250',
             'summary' => 'nullable|string|max:250|required_if:isSensitive,true',
             'sensitive' => 'boolean',
             'media.*' => 'mimes:webp,jpeg,png,jpg,gif,mp4,mp3,wav,ogg,ogv|max:10240',
         ]);
-        Log::info("validado");
-        Log::info(print_r($this->altText,1));
         $this->isFormSubmitted = true;
         $user=auth()->user();
         $user_id=$user->id;
@@ -54,11 +51,9 @@ class Create extends Component
         ]);
         if ($nota)
         {
-            Log::info("dispatch");
             $this->dispatch('formSubmitted');
             $dir = 'apfiles/'.now()->format('Y/m');
             foreach ($this->media as $k=>$file) {
-                Log::info(print_r("aaa", true));
                 $stored=$file->store($dir,"public");
                 Apfile::create([
                     'file_path' => $stored,

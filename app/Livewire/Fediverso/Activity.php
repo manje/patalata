@@ -30,8 +30,9 @@ class Activity extends Component
     {
         if ($msgrespondiendo==false) $this->msgrespondiendo=false;
         $this->user = ActivityPub::GetIdentidad();
+        $this->ap=new ActivityPub($this->user);
         if (is_string($activity)) 
-            $this->activity = ActivityPub::GetObjectByUrl($this->user,$activity);
+            $this->activity = $this->ap->GetObjectByUrl($activity);
         else
             $this->activity = $activity;
         $this->diferido=$diferido;
@@ -51,7 +52,7 @@ class Activity extends Component
         if ($this->activity['type']=="Create")
         {
             if (is_string($this->activity['object']))    
-                $this->activity=ActivityPub::GetObjectByUrl($this->user , $this->activity['object']);
+                $this->activity=$this->ap->GetObjectByUrl($this->activity['object']);
             else
                 $this->activity=$this->activity['object'];
         }
@@ -59,12 +60,12 @@ class Activity extends Component
         if (isset($this->activity['errors'])) $this->activity['type']="Error";
         if (isset($this->activity['actor']))
             if (is_string($this->activity['actor']))
-                $this->activity['actor']=ActivityPub::GetActorByUrl($this->user , $this->activity['actor']);
+                $this->activity['actor']=$this->ap->GetActorByUrl($this->activity['actor']);
         if (isset($this->activity['published'])) $this->activity['published']=Carbon::parse($this->activity['published']);
 
 
         if (isset($this->activity['object']))
-            if (is_string($this->activity['object']))    $this->activity['object']=ActivityPub::GetObjectByUrl($this->user , $this->activity['object']);
+            if (is_string($this->activity['object']))    $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']);
 
         if (isset($this->activity['attributedTo']))
         {
@@ -74,25 +75,31 @@ class Activity extends Component
                 $this->activity['attributedTo']=$this->activity['attributedTo'][0];
             if (is_string($this->activity['attributedTo']))
             {
-                $this->activity['attributedTo']=ActivityPub::GetObjectByUrl($this->user , $this->activity['attributedTo']);
+                $this->activity['attributedTo']=$this->ap->GetObjectByUrl($this->activity['attributedTo']);
                 if (!(isset($this->activity['attributedTo']['preferredUsername']))) $this->activity['error']='Error en attributedTo';
             }
         }
         $this->activity['num_replies']='?';
         $this->activity['num_likes']='?';
         $this->activity['num_shares']='?';
-        if (isset($this->activity['replies']))  $this->activity['num_replies']=(int)ActivityPub::GetColeccion($this->user , $this->activity['replies'],true);
-        if (isset($this->activity['likes']))  $this->activity['num_likes']=(int)ActivityPub::GetColeccion($this->user , $this->activity['likes'],true);
-        if (isset($this->activity['shares']))  $this->activity['num_shares']=(int)ActivityPub::GetColeccion($this->user , $this->activity['shares'],true);
+        if (isset($this->activity['replies']))  $this->activity['num_replies']=(int)$this->ap->GetColeccion($this->activity['replies'],true);
+        if (isset($this->activity['likes']))  $this->activity['num_likes']=(int)$this->ap->GetColeccion($this->activity['likes'],true);
+        if (isset($this->activity['shares']))  $this->activity['num_shares']=(int)$this->ap->GetColeccion($this->activity['shares'],true);
+
+        // probando nuevas funciones para replies
+
+        #$tmp=$this->ap->GetReplys($this->activity['id']);
+
+
         if (isset($this->activity['inReplyTo']))
         {
             if (is_string($this->activity['inReplyTo']))
-                $this->activity['isreply']=ActivityPub::GetObjectByUrl($this->user , $this->activity['inReplyTo']);
+                $this->activity['isreply']=$this->ap->GetObjectByUrl( $this->activity['inReplyTo']);
             else
                 $this->activity['isreply']=$this->activity['inReplyTo'];
             if (isset($this->activity['isreply']['attributedTo']))
             {
-                $this->activity['autororigen']=ActivityPub::GetActorByUrl($this->user , $this->activity['isreply']['attributedTo']);
+                $this->activity['autororigen']=$this->ap->GetActorByUrl($this->activity['isreply']['attributedTo']);
                 if (isset($this->activity['autororigen']['preferredUsername']))
                 {
                     $dom=explode("/",$this->activity['autororigen']['id']);
@@ -158,9 +165,7 @@ class Activity extends Component
             $this->respuestas=false;
         else
         {
-            // ##########################x xxxxxxxxxxxxxxxxxxxxxxxxx guardar en replies
-            $this->listrespuestas=ActivityPub::GetColeccion($this->user , $this->activity['replies']);
-            Log::info('list respuestas '.print_r($this->listrespuestas,1));
+            $this->listrespuestas=$this->ap->GetReplys($this->activity['id']);
             $this->respuestas=true;
         }
     }
@@ -183,7 +188,7 @@ class Activity extends Component
                     'object'=>$this->activity['id']
                     ]
                 ];
-            $res=ActivityPub::EnviarActividadPOST($this->user,json_encode($activity),$this->activity['attributedTo']['inbox']);
+            $res=$this->ap->EnviarActividadPOST(json_encode($activity),$this->activity['attributedTo']['inbox']);
             Log::info('res '.print_r($res,1));
             $res="$res";
             if ($res[0]!='2')
@@ -205,7 +210,7 @@ class Activity extends Component
                 'actor'=>$this->user->GetActivity()['id'],
                 'object'=>$this->activity['id']
             ];
-            $res=ActivityPub::EnviarActividadPOST($this->user,json_encode($activity),$this->activity['attributedTo']['inbox']);
+            $res=$this->ap->EnviarActividadPOST(json_encode($activity),$this->activity['attributedTo']['inbox']);
             $res="$res";
             if ($res[0]!='2')
             {
@@ -234,7 +239,7 @@ class Activity extends Component
 
     public function render()
     {
-        Log::info(print_r($this->activity,1));
+        #Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')

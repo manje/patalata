@@ -16,12 +16,12 @@ class Admin extends Component
     public function mount($campaign)
     {
         $this->campaign=$campaign;
+        $this->ap=new ActivityPub(ActivityPub::GetIdentidad());
     }
 
     public function updatedBusca()
     {
-        \Illuminate\Support\Facades\Log::info("buscar ".$this->busca);
-        $this->invitado=ActivityPub::GetActorByUsername(ActivityPub::GetIdentidad(),$this->busca);
+        $this->invitado=ActivityPub::GetActorByUsername($this->busca);
     }
 
     public function PrevenirAdmin($actor,$rol)
@@ -72,13 +72,13 @@ class Admin extends Component
             $k=$m->status;
             $c=$m->created_at;
             
-            $m=ActivityPub::GetActorByUrl( Auth()->user(),$m->object );
+            $ap=new ActivityPub( Auth()->user() );
+            $m=$ap->GetActorByUrl( Auth()->user());
             if ($m)
             {
                 $m['created_at']=$c;
                 $list[$k][]=$m;
             }
-            \Illuminate\Support\Facades\Log::info(print_r($list,1));
         }
         return view('livewire.campaigns.admin',[
             'campaign'=>$this->campaign,

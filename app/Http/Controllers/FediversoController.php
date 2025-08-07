@@ -36,8 +36,8 @@ class FediversoController extends Controller
             $user->forceFill([
                 'current_team_id' => null,
             ])->save();
-            }
-        $this->identidad=ActivityPub::GetIdentidad();        
+        }
+        $this->identidad=ActivityPub::GetIdentidad(Auth::user());
         return view('fediverso.fediverso',['userfediverso'=>$this->identidad]);
     }
 
@@ -47,13 +47,13 @@ class FediversoController extends Controller
     public function profile(Request $request, string $slug)
     {
         $this->identidad=ActivityPub::GetIdentidad();        
-        #Log::info(print_r($this->identidad,1));
+        $ap=new ActivityPub($this->identidad);
         $name=explode("@",$slug);
         if (count($name)==1) $name[1]=$request->getHost(); /// que lo consiga internamente xxxxxxxxxxxx
         $slug=$name[0].'@'.$name[1];
         if (count($name)==2)
         {
-            $actor=ActivityPub::GetActorByUsername($this->identidad,$slug);
+            $actor=$ap->GetActorByUsername($slug);
             if (!$actor)
             {
                 return response()->json('Usuario no encontrado', 404);

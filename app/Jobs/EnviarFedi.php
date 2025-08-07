@@ -50,7 +50,8 @@ class EnviarFedi implements ShouldQueue
             ];
         }
         $json=json_encode($json);
-        $actor=ActivityPub::GetActorByUrl($this->data['user'],$this->data['follower']);
+        $ap=new ActivityPub($this->data['user']);
+        $actor=$ap->GetActorByUrl($this->data['follower']);
         $headers = HTTPSignature::sign($this->data['user'], $json, $actor['inbox']);
         $ch = curl_init($actor['inbox']);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

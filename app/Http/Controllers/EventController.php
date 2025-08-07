@@ -8,8 +8,6 @@ use App\Models\Member;
 use App\Models\Team;
 use App\Models\Apfile;
 
-use App\ActivityPub\ActivityPub;
-
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;

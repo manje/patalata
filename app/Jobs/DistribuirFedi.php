@@ -22,16 +22,17 @@ class DistribuirFedi implements ShouldQueue
     public $data;
     public $user;
     public $activity;
+    public $ap;
 
     /**
      * Create a new job instance.
      */
     public function __construct($data,$user,$activity=false)
     {
-        Log::info('DistribuirFedi Construcor ');
         $this->data = $data;  // evitemos $data y usemos activity
         $this->user = $user;
         $this->activity = $activity;
+        $this->ap=new ActivityPub($user);
     }
 
     /**
@@ -43,7 +44,7 @@ class DistribuirFedi implements ShouldQueue
         if (($this->activity['type']=='Create') || ($this->activity['type']=='Update'))
         {
             Log::info("Esperamos 10s".print_r($this->activity,1));
-            $this->activity['object']=ActivityPub::GetObjectByUrl($user,$this->activity['object']['id']);
+            $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']['id']);
             Log::info("Fin 10s".print_r($this->activity,1));
         }
         Log::info('DistribuirFedi: inicio ');
@@ -63,7 +64,7 @@ class DistribuirFedi implements ShouldQueue
         if ($this->data)
         if ($this->data->APtype=='Announcement') 
         {
-            $objeto=ActivityPub::GetObjectByUrl($this->user,$this->data->object);
+            $objeto=$this->ap->GetObjectByUrl($this->data->object);
             $usuario=$objeto['attributedTo'];
             $b=Block::where('actor', $this->user->GetActivity()['id'])->where('object', $usuario)->first();
             if (!$b) $b=Block::where('actor', $usuario)->where('object', $this->user->GetActivity()['id'])->first();
@@ -84,7 +85,7 @@ class DistribuirFedi implements ShouldQueue
                 // Los Undo los envio aunque esté el destinatario bloqueado
                 if ($this->activity['object']['type']=='Announce')
                 {
-                    $objeto=ActivityPub::GetObjectByUrl($this->user,$this->activity['object']['object']);
+                    $objeto=$this->ap->GetObjectByUrl($this->user,$this->activity['object']['object']);
                     $usuario=$objeto['attributedTo'];
                     if (!in_array($usuario,$list))
                     {

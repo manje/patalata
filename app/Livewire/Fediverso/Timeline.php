@@ -20,17 +20,29 @@ class Timeline extends Component
     public $siguienteprimero=false;
     public $numactividades=20;
     public $ultimo=0;
+    protected $ap;
 
     protected $listeners = ['loadMore'];
 
+    public function __construct()
+    {
+#        parent::__construct();
+        $user = ActivityPub::GetIdentidad();
+        $this->ap = new ActivityPub($user);
+    }
+
     public function mount($actor=false)
     {
+        Log::debug('timeline mount '.$this->ap->user->id);
         if ($actor)
         {
+            $this->user=false;
             $this->actor=$actor;
             return;
         }
-        $this->user=ActivityPub::GetIdentidad();
+        $this->user=$this->ap->user;
+        Log::debug($this->user->id);
+        Log::debug('fin mount');
     }
 
     public function loadMore()
@@ -40,7 +52,7 @@ class Timeline extends Component
             $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(100)->get();
             foreach ($list as $item)
             {
-                $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                $a=$this->ap->GetObjectByUrl($item->activity);
                 if (isset($a['id']))
                 {
                     $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
@@ -85,7 +97,7 @@ class Timeline extends Component
                 foreach ($list as $item)
                 {
                     if ($this->siguienteprimero===false) $this->siguienteprimero=$item;
-                    $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                    $a=$this->ap->GetObjectByUrl($item->activity);
                     if (isset($a['id']))
                     {
                         $this->nuevaslist[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
@@ -100,14 +112,14 @@ class Timeline extends Component
     {
         if ($this->actor)
         {
-            $u=ActivityPub::GetIdentidad();
-            $outbox=(array)ActivityPub::GetColeccion($u,$this->actor['outbox'],false,5);
+            
+            $outbox=(array)$this->ap->GetColeccion($this->actor['outbox'],false,5);
             #if (count($outbox)>50) $list=array_slice($outbox,0,50);
             $this->timeline=[];
             foreach ($outbox as $k=>$v)
             {
                 if (is_string($v)) 
-                    $a=ActivityPub::GetObjectByUrl($u,$v);
+                    $a=$this->ap->GetObjectByUrl($v);
                 else
                     $a=$v;
                 if (isset($a['id']))
@@ -116,13 +128,17 @@ class Timeline extends Component
         }
         if ($this->user)
         {
+            Log::debug('timeline loadPosts');
             $this->primero=false;
             $list=TL::where('user',$this->user->GetActivity()['id'])->orderBy('id','desc')->take($this->numactividades)->get();
+            Log::debug($this->user->GetActivity()['id']);
             $this->timeline=[];
             foreach ($list as $item)
             {
+                Log::debug($item->id);
+        Log::debug('antes de usar ap '.$this->ap->user->id);
                 if ($this->primero===false) $this->primero=$item;
-                $a=ActivityPub::GetObjectByUrl($this->user,$item->activity);
+                $a=$this->ap->GetObjectByUrl($item->activity);
                 if (isset($a['id']))
                 {
                     $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
@@ -132,9 +148,12 @@ class Timeline extends Component
                 $this->ultimo=$item->id;
         }
         $this->serial++;
+        Log::debug('fin loadPosts '.$this->serial);
+        Log::debug(print_r($this->timeline,true));
     }
     public function render()
     {
+        Log::debug('timeline render');
         return view('livewire.fediverso.timeline', ['timeline' => $this->timeline,'nuevas' => $this->nuevas,'serial' => $this->serial]);
     }
 }

@@ -15,17 +15,19 @@ class SelCampaign extends Component
     public $listado=[];
     public $campaigns=[];
     public $search = '';
+    protected $ap;
 
     public function mount($campaigns=false)
     {
         $this->user=auth()->user();
         if ($campaigns)
             $this->listado=$campaigns;
+        $this->ap=new ActivityPub($this->user);
     }
 
     public function add($id)
     {
-        $actor=ActivityPub::GetActorByUrl($this->user,$id);
+        $actor=$this->ap->GetActorByUrl($id);
         $this->listado[$id]=$actor;
         $this->campaigns=[];
         foreach ($this->listado as $a)
@@ -46,7 +48,7 @@ class SelCampaign extends Component
     {
         $this->busqueda=[];
         if (strlen($this->search)<3) return;
-        $completo=ActivityPub::GetActorByUsername($this->user,$this->search);
+        $completo=$this->ap->GetActorByUsername($this->search);
         if (isset($completo['campaign']))
             if ($completo['campaign'])
             { 
@@ -71,7 +73,7 @@ class SelCampaign extends Component
         {
             if ($completo)
             if ($t==$completo['id']) continue;
-            $a=ActivityPub::GetActorByUrl($this->user,$t);
+            $a=$this->ap->GetActorByUrl($t);
             if (isset($a['userfediverso']))
                 if (isset($a['campaign']))
                     if ($a['campaign'])
