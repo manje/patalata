@@ -100,11 +100,12 @@ class ActivityPub
 
     public function GetObjectByUrl($url,$cache=false)
     {
-        if ($cache===false) $cache=60*24*7;
+        if ($cache===false) $cache=60*24*15;
         // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
         if (is_array($url)) return $url;
         if(!\p3k\url\is_url($url)) return false;
         if ($out=Cache::get($url)) return $out;
+        Log::info("NoCache $url ($cache)");
         $domain=parse_url($url, PHP_URL_HOST);
         if (false)
         if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
@@ -123,7 +124,6 @@ class ActivityPub
         {
           return $out;
         }
-        if ($out=Cache::get($url)) return $out;
         $idca="$domain ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
         #echo "    $num   ";
@@ -138,23 +138,22 @@ class ActivityPub
         }
         if (isset($out['codhttp']))
             if ($out['codhttp']==429)
-        {
-            $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
-            Cache::put($idbantmp,$out,60);
-        }
+            {
+                $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
+                Cache::put($idbantmp,$out,60);
+            }
         if (isset($out['errorcurl']))
         {
             if ($out['errorcurl']>0)
             {
                 $out['error']='Error de curl';
                 $out=['error'=>'curl','coderror'=>$out['errorcurl']];
-                Cache::put($idbantmp,$out,60*60*12);
+                Cache::put($idbantmp,$out,10);
             }
         }
-
         if (isset($out['error']))
         {
-            Cache::put($url,$out,120);
+            Cache::put($url,$out,30);
         }
         else
         {
@@ -314,12 +313,13 @@ class ActivityPub
         return $list;
     }
 
-    public function GetCollection($idlist)
+    public function GetCountCollection($idlist)
     {
-        $idcache="gc ".$idlist;
+        $idcache="gc  ".md5(json_encode($idlist));
         $num=Cache::get($idcache);
         if ($num) return $num;
         $obj=$this->GetObjectByUrl($idlist,5); // 5 minutos de ttl
+        #Log::info(print_r($obj,1));
         if (array_is_list($obj))
         {
             Cache::put($idcache,count($obj),60*5);
@@ -330,14 +330,23 @@ class ActivityPub
             Cache::put($idcache,$obj['totalItems'],60*5);
             return $obj['totalItems'];
         }
+        if (isset($obj['first']))
+        {
+            if (is_array($obj['first']))
+                if (isset($obj['first']['items']))
+                    return count($obj['first']['items']);
+            
+        } 
         return false;
     }
 
     public function GetListCollection($idlist,$limite=0)
     {
         // esta función estaría guay que guardara en cache persistente y comprobara solo si hay nuevos
-        $idcache="list collection ".$idlist;
+        $idcache="list collection  ".$idlist;
         $out=Cache::get($idcache);
+        if ($out) Log::info($idcache);
+        if ($out) Log::info(print_r($out,1));
         if ($out) return $out;
         $cachetmp="persistente $idlist";
         $cachetmp=Cache::get($cachetmp);
@@ -346,6 +355,7 @@ class ActivityPub
         else
             $list=$cachetmp;
         $col=$this->GetObjectByUrl($idlist,5);
+        Log::info('first col '.print_r($col,1));
         // esto tiene tipo collection y un first
         if ($col['type']!='Collection')
         {
@@ -361,12 +371,20 @@ class ActivityPub
             {
                 if ($col['type']!='CollectionPage')
                 {
-                    Log::error(print_r($col,1));
-                    return [];
+                    Log::info("Revisar cuando ocurra este error, debe ser limite de peticiones, errores de conexión...");
+                    Log::info(print_r($col,1));
+                    return $list;
                 }
                 foreach ($col['items'] as $item)
                 {
                     if (is_array($item)) $item=$item['id'];
+                    /*
+                        Esto está mal, puede que ya tengamos un elemento pero haya falta seguir, porque ese elemento lo 
+                        hemos recibido en algún inbox de nuestros usuarios.
+                        Tal vez en el listado persistente habría que apuntar cuales vienen de esta función, o cuando
+                        recibamos un reply a nuestro inbox apuntarlo como "flotante" o algo así, de manera que aquí 
+                        lo ignoremos a la hora de comprobar si hemos llegado al final
+                    */
                     if (in_array($item,$list))
                         $seguir=false; // en cuanto me encuentro un elemento que ya teníamos significa que estamos sincronizados
                     else
@@ -381,7 +399,7 @@ class ActivityPub
             }
         }
         Cache::put($cachetmp,$list,60*60*24*30*3);
-        Cache::put($idcache,$list,60*2);
+        Cache::put($idcache,$list,5);
         return $list;
     }
 
@@ -729,7 +747,6 @@ Este es un ejemplo de lo que nos hemos encontrado
         // xxxxxxxxxxxxxxxxxxxxxxx
         // dato el id de un objeto, saca todas las replies
         // tiene que mirar en la colección y comparar con nuestra base de datos
-        Log::info("registro reply a objeto $id");
         $list=Reply::where('object',$id)->orderBy('id','desc')->get();
         $idsr=[];
         foreach ($list as $v)
@@ -737,17 +754,18 @@ Este es un ejemplo de lo que nos hemos encontrado
             $idsr[]=$v->reply;
             #Log::info(print_R($v,1));
         }
-        Log::info("hay ".$list->count()." res en bd");
         $object=$this->GetObjectByUrl($id);
         if (!(isset($object['replies']))) return [];
         $object=$object['replies'];
         if (is_array($object)) $object=$object['id'];
-        $list=$this->GetListCollection($object);
-        Log::info(" lsit es 2343298 ".print_r($list,1));
+        $listb=$this->GetListCollection($object);
+        $listb=array_reverse($listb);
+        Log::info(" lsit es 2343298 ".print_r($listb,1));
         $sincronizado=true;
-        foreach ($list as $v)
-        {
+        foreach ($listb as $v)
+        {   
             if (is_array($v)) $v=$v['id'];
+            Log::info("rep $v");
             if (!in_array($v,$idsr))
             {
                 $sincronizado=false;
@@ -758,9 +776,19 @@ Este es un ejemplo de lo que nos hemos encontrado
                 ]);
             }
         }
+        Log::info("asfd  003");
         if (!$sincronizado)
+        {
             $list=Reply::where('object',$id)->orderBy('id','desc')->get();
-        return $list;
+            $new=[];
+            foreach ($list as $v)
+            {
+                $new[]=$v->reply;
+            }
+            $list=$new;
+        }
+        Log::info("retur de list ".print_r($list,1));
+        return $idsr;
     }
 
 

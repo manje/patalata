@@ -37,7 +37,7 @@ class Seguir extends Component
         $this->identidad=ActivityPub::GetIdentidad();
         $this->ap=new ActivityPub($this->identidad);
         if ($this->identidad)
-            if ($this->ap->dejarDeSeguir($this->actor))
+        if ($this->ap->dejarDeSeguir($this->actor))
                 $this->siguiendo=false;
     }
 

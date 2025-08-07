@@ -65,7 +65,7 @@ wire:init="load"
                             <h2 class="font-bold text-lg">
                                 @if (isset($activity['attributedTo']['preferredUsername']))
                                 <a href="/{{"@"}}{{ $activity['attributedTo']['preferredUsername'] }}{{"@"}}{{ explode("/",$activity['attributedTo']['inbox'])[2] }}" class="text-lg">
-                                    {{ $activity['attributedTo']['name'] }}
+                                    {{ $activity['attributedTo']['name'] ?? '???' }}
                                 </a>
                                 @endif
                             </h2>
@@ -296,11 +296,14 @@ wire:init="load"
                         <span>Respuestas</span>
                     </button>
                 </div>
-                <span wire:target="verrespuestas" wire:loading.delay class="loading loading-ring loading-md"></span>
+                <div wire:target="verrespuestas" wire:loading.delay class="w-full text-center">
+                    <span  class="loading loading-ring loading-md"></span>
+                </div>
+
                 @if ($respuestas)
                 <div class="ml-14">
                     @foreach ($listrespuestas as $res)
-                        <livewire:fediverso.activity :activity="$res" :diferido="true" :msgrespondiendo="false"  />  
+                        <livewire:fediverso.activity :activity="$res" :diferido="true" :msgrespondiendo="false" :key="$res" />  
                     @endforeach
                 </div>
                 @endif

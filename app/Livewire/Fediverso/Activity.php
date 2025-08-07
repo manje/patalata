@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Log;
 use App\ActivityPub\ActivityPub;
 use App\Models\Like;
 use App\Models\Announce;
+use App\Models\Reply;
 use Carbon\Carbon;
 
 
@@ -16,7 +17,6 @@ class Activity extends Component
 {
     
     public $activity;
-    public $user;
     public $origen=false;
     public $loading=true;
     public $diferido=true;
@@ -25,12 +25,14 @@ class Activity extends Component
     public $msgrespondiendo=true;
     public $like=false;
     public $rt=false;
+    protected $ap;
+    protected $user;
+
 
     public function mount($activity,$diferido=true,$msgrespondiendo=true)
     {
+        $this->ap();
         if ($msgrespondiendo==false) $this->msgrespondiendo=false;
-        $this->user = ActivityPub::GetIdentidad();
-        $this->ap=new ActivityPub($this->user);
         if (is_string($activity)) 
             $this->activity = $this->ap->GetObjectByUrl($activity);
         else
@@ -39,6 +41,11 @@ class Activity extends Component
         if (!$diferido) $this->cargar();
     }
     
+    public function ap()    
+    {
+        $this->user = ActivityPub::GetIdentidad();
+        $this->ap=new ActivityPub($this->user);
+    }
     public function load()    
     {
         if ($this->diferido)
@@ -46,6 +53,7 @@ class Activity extends Component
     }
     public function cargar()    
     {
+        $this->ap();
         $this->loading=false;
         if (isset($this->activity['error'])) $this->activity['type']="Error";
         if (isset($this->activity['actor']))
@@ -82,9 +90,14 @@ class Activity extends Component
         $this->activity['num_replies']='?';
         $this->activity['num_likes']='?';
         $this->activity['num_shares']='?';
-        if (isset($this->activity['replies']))  $this->activity['num_replies']=(int)$this->ap->GetColeccion($this->activity['replies'],true);
-        if (isset($this->activity['likes']))  $this->activity['num_likes']=(int)$this->ap->GetColeccion($this->activity['likes'],true);
-        if (isset($this->activity['shares']))  $this->activity['num_shares']=(int)$this->ap->GetColeccion($this->activity['shares'],true);
+        if (isset($this->activity['replies']))
+        {
+            $this->activity['num_replies']=(int)$this->ap->GetCountCollection($this->activity['replies']);
+            $num=Reply::where('object', $this->activity['id'])->count();
+            if ($num > 0) $this->activity['num_replies']=$num;
+        }
+        if (isset($this->activity['likes']))  $this->activity['num_likes']=(int)$this->ap->GetCountCollection($this->activity['likes']);
+        if (isset($this->activity['shares']))  $this->activity['num_shares']=(int)$this->ap->GetCountCollection($this->activity['shares']);
 
         // probando nuevas funciones para replies
 
@@ -161,6 +174,7 @@ class Activity extends Component
     
     public function verrespuestas()
     {
+        $this->ap();
         if ($this->respuestas)
             $this->respuestas=false;
         else
@@ -171,6 +185,7 @@ class Activity extends Component
     }
     public function setlike()
     {
+        $this->ap();
         // solo habíra que guardar el modelo y el envío se deberí hacer desde el trait 
         if ($this->like)
         {
@@ -223,7 +238,7 @@ class Activity extends Component
 
     public function setimpulso()
     {
-        // solo habíra que guardar el modelo y el envío se deberí hacer desde el trait 
+        // solo hay que guardar el modelo y el envío se hace desde el trait 
         Log::info("Hacemos rt1");
         if ($this->rt)
         {
@@ -240,6 +255,7 @@ class Activity extends Component
     public function render()
     {
         #Log::info(print_r($this->activity,1));
+        if (!(isset($this->activity['type']))) return "<div>".print_r($this->activity,1)."</div>";
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')
@@ -250,15 +266,5 @@ class Activity extends Component
             Log::info(print_r($this->activity,1));
         if ((isset($this->activity['object']['error']))) return "<div>error</div>";
         return view('livewire.fediverso.activity');
-        /*
-        return view('livewire.fediverso.activity', [
-            'activity' => $this->activity,
-            'origen' => $this->origen,
-            'loading' => $this->loading,
-            'listrespuestas'=>$this->listrespuestas,
-            'msgrespondiendo'=>$this->msgrespondiendo,
-            'like'=>$this->like
-        ]);
-        */
     }
 }
