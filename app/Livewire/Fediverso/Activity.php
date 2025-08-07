@@ -71,13 +71,10 @@ class Activity extends Component
                 $this->activity['actor']=$this->ap->GetActorByUrl($this->activity['actor']);
         if (isset($this->activity['published'])) $this->activity['published']=Carbon::parse($this->activity['published']);
 
-
-        if (isset($this->activity['object']))
-            if (is_string($this->activity['object']))    $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']);
-
         if (isset($this->activity['attributedTo']))
         {
             // hay que pensar como tratar esto, de tener más de un attributedTo
+            if (is_string($this->activity['object']))    $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']);
             if (is_array($this->activity['attributedTo']))
             if (array_is_list($this->activity['attributedTo']))
                 $this->activity['attributedTo']=$this->activity['attributedTo'][0];
@@ -254,8 +251,7 @@ class Activity extends Component
 
     public function render()
     {
-        #Log::info(print_r($this->activity,1));
-        if (!(isset($this->activity['type']))) return "<div>".print_r($this->activity,1)."</div>";
+        Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')

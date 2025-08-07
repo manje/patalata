@@ -26,8 +26,7 @@ class Timeline extends Component
 
     public function __construct()
     {
-#        parent::__construct();
-        $user = ActivityPub::GetIdentidad();
+        $this->user = ActivityPub::GetIdentidad();
         $this->ap = new ActivityPub($user);
     }
 
@@ -49,6 +48,7 @@ class Timeline extends Component
     {
         if ($this->user)
         {
+            $this->ap = new ActivityPub($user);
             $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(100)->get();
             foreach ($list as $item)
             {
@@ -94,6 +94,7 @@ class Timeline extends Component
                 $this->nuevas=$list;
                 $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','>', $this->primero->id)->orderBy('id', 'desc')->take($list)->get();
                 $this->nuevaslist=[];
+                $this->ap = new ActivityPub($user);
                 foreach ($list as $item)
                 {
                     if ($this->siguienteprimero===false) $this->siguienteprimero=$item;
@@ -110,11 +111,11 @@ class Timeline extends Component
 
     public function loadPosts()    
     {
+        $this->ap = new ActivityPub($user);
         if ($this->actor)
         {
-            
+            $u=ActivityPub::GetIdentidad();
             $outbox=(array)$this->ap->GetColeccion($this->actor['outbox'],false,5);
-            #if (count($outbox)>50) $list=array_slice($outbox,0,50);
             $this->timeline=[];
             foreach ($outbox as $k=>$v)
             {
@@ -148,8 +149,6 @@ class Timeline extends Component
                 $this->ultimo=$item->id;
         }
         $this->serial++;
-        Log::debug('fin loadPosts '.$this->serial);
-        Log::debug(print_r($this->timeline,true));
     }
     public function render()
     {

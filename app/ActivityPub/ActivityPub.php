@@ -615,14 +615,14 @@ Este es un ejemplo de lo que nos hemos encontrado
                     return response()->json(['error' => 'actor y attributedTo distintos'],401);
                 }
 
-                // Aqui gestionamos la actividad si es pública, esto es, según el tipo si queremos añadirl a colecciones publicas, incluir un evento en la agenda, procesar HastTags, etc.
                 // La guardamos, falta procesarla para discover
                 // Ver si está ya en cache nos puede servir para saber si ya está procesada, ya que una misma actividad puede llegar varias veces a distintos actores subscritos
                 Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);
+                                    
+                // Compruebo si el actor está entre los seguidos del usuario
                 
-                
-                // Procesamos replies                
-                if (isset($activity['object']['inReplyTo']))
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
+                if (is_null($seguido))
                 {
                    $object=$activity['object']['inReplyTo'];
                    $reply=$activity['object'];
@@ -705,6 +705,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 Reply::where('object',$activity['object'])->orWhere('reply',$activity['object'])->delete();
                 // hay que borrar nuestros likes, members y announces a este objeto                
                 return response()->json(['message' => 'Accepted'],202);
+                #Log::info('Petición de Delete '.print_r($activity,1));
             }
             case 'Update':
                 if (isset($activity['object']['id']))

@@ -42,6 +42,7 @@ class ActivityPubUserController extends Controller
     public function inbox(Request $request, $slug): JsonResponse
     {
         $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
+        // Busca al usuario por su slug
         $user=ActivityPub::GetIdentidadBySlug($slug);
         $ap=new ActivityPub($user);
         $path='/ap/users/'.$user->slug.'/inbox';
@@ -169,6 +170,65 @@ class ActivityPubUserController extends Controller
 
     }
 
+// copiado de chatgpt para verificar la firma "interna"
+function verifySignature(array $activity)
+{
+    if (!isset($activity['signature'])) {
+        throw new Exception("No signature found in the activity.");
+    }
+
+    $signature = $activity['signature'];
+    if (!isset($signature['signatureValue'], $signature['creator'])) {
+        throw new Exception("Signature structure is invalid.");
+    }
+
+    $signedObject = json_encode($activity['object'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $signatureValue = base64_decode($signature['signatureValue']);
+    $creatorUrl = $signature['creator'];
+
+    // Obtener la clave pública del actor (suponiendo que el actor tiene la clave en su perfil)
+    $publicKey = fetchPublicKey($creatorUrl);
+    if (!$publicKey) {
+        throw new Exception("Failed to retrieve the public key.");
+    }
+
+    // Verificar la firma usando la clave pública
+    $verified = openssl_verify($signedObject, $signatureValue, $publicKey, OPENSSL_ALGO_SHA256);
+
+    return $verified === 1;
+}
+
+function fetchPublicKey(string $actorUrl)
+{
+    $actorData = Activitypub::GetActorByUrl($actorUrl);
+    if (!$actorData) {
+        return false;
+    }
+
+    $actor = json_decode($actorData, true);
+    if (!isset($actor['publicKey']['publicKeyPem'])) {
+        return false;
+    }
+
+    return $actor['publicKey']['publicKeyPem'];
+}
+
+// Ejemplo de uso
+try {
+    $activity = json_decode(file_get_contents('php://input'), true);
+    $isValid = verifySignature($activity);
+
+    if ($isValid) {
+        echo "Firma válida.";
+    } else {
+        echo "Firma no válida.";
+    }
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage();
+}
+
+
+>>>>>>> b2aa73cd2253906bc780fc727af928ebbc0b777e
 
 
 
