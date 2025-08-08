@@ -32,7 +32,6 @@ class Timeline extends Component
 
     public function mount($actor=false)
     {
-        Log::debug('timeline mount '.$this->ap->user->id);
         if ($actor)
         {
             $this->user=false;
@@ -40,8 +39,6 @@ class Timeline extends Component
             return;
         }
         $this->user=$this->ap->user;
-        Log::debug($this->user->id);
-        Log::debug('fin mount');
     }
 
     public function loadMore()
@@ -129,15 +126,11 @@ class Timeline extends Component
         }
         if ($this->user)
         {
-            Log::debug('timeline loadPosts');
             $this->primero=false;
             $list=TL::where('user',$this->user->GetActivity()['id'])->orderBy('id','desc')->take($this->numactividades)->get();
-            Log::debug($this->user->GetActivity()['id']);
             $this->timeline=[];
             foreach ($list as $item)
             {
-                Log::debug($item->id);
-        Log::debug('antes de usar ap '.$this->ap->user->id);
                 if ($this->primero===false) $this->primero=$item;
                 $a=$this->ap->GetObjectByUrl($item->activity);
                 if (isset($a['id']))
@@ -152,7 +145,6 @@ class Timeline extends Component
     }
     public function render()
     {
-        Log::debug('timeline render');
         return view('livewire.fediverso.timeline', ['timeline' => $this->timeline,'nuevas' => $this->nuevas,'serial' => $this->serial]);
     }
 }

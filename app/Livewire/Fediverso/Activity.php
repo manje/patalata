@@ -74,7 +74,7 @@ class Activity extends Component
         if (isset($this->activity['attributedTo']))
         {
             // hay que pensar como tratar esto, de tener más de un attributedTo
-            if (is_string($this->activity['object']))    $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']);
+            #if (is_string($this->activity['object']))    $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']);
             if (is_array($this->activity['attributedTo']))
             if (array_is_list($this->activity['attributedTo']))
                 $this->activity['attributedTo']=$this->activity['attributedTo'][0];
