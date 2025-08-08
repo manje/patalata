@@ -213,26 +213,3 @@ function fetchPublicKey(string $actorUrl)
     return $actor['publicKey']['publicKeyPem'];
 }
 
-// Ejemplo de uso
-try {
-    $activity = json_decode(file_get_contents('php://input'), true);
-    $isValid = verifySignature($activity);
-
-    if ($isValid) {
-        echo "Firma válida.";
-    } else {
-        echo "Firma no válida.";
-    }
-} catch (Exception $e) {
-    echo "Error: " . $e->getMessage();
-}
-
-
->>>>>>> b2aa73cd2253906bc780fc727af928ebbc0b777e
-
-
-
-
-
-}
-
