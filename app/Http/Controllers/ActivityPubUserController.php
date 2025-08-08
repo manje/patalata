@@ -21,8 +21,6 @@ use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
-use App\ActivityPub\LDSignature;
-
 use Request as Rq;
 use App\Traits\ModelFedi;
 
@@ -41,33 +39,15 @@ class ActivityPubUserController extends Controller
 
     public function inbox(Request $request, $slug): JsonResponse
     {
-        $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
         // Busca al usuario por su slug
         $user=ActivityPub::GetIdentidadBySlug($slug);
-        $ap=new ActivityPub($user);
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
-        if (!$this->verifySignature($activity,$path))
+        if (!$this->verifySignature($user,$activity,$path)) 
         {
-            if (!isset($activity['signature']))
-                return response()->json(['error' => 'Invalid signature'], 401);
-            $sig=new LDSignature();
-            $actor=$ap->GetActorByUrl($user,$activity['actor']);
-            if (!(isset($actor['publicKey'])))
-            {
-                return response()->json(['error' => 'Invalid signature'], 401);
-            }
-            $res=$sig->verify($activity,$actor['publicKey']['publicKeyPem']);
-            if ($res)
-            {
-                Log::info("Valida\tsignature LD t $activity[type] $actor[id] ");
-                return $ap->InBox($user,$activity);
-            }
-            Log::info("Inválida\tsignature LD $activity[type] $actor[id] ");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
-        Log::info("Válida signature $path ".$user->slug." ".$signatureData['algorithm']);
-        return $ap->InBox($activity);
+        return ActivityPub::InBox($user,$activity);
     }
 
     public function following($slug): JsonResponse
@@ -97,9 +77,8 @@ class ActivityPubUserController extends Controller
     }
 
 
-    private function verifySignature($activity,$path): bool
+    private function verifySignature($user,$activity,$path): bool
     {
-        $ap=new ActivityPub(null);
         if(!Rq::header('signature')) {
           return response()->json([
             'error' => 'Missing Signature header'
@@ -111,7 +90,9 @@ class ActivityPubUserController extends Controller
             return false;
     
         $url=$activity['actor'];
-        $actor=$ap->GetActorByUrl($url);
+        $user=ActivityPub::GetIdentidadBySlug($user->slug);
+        $ap=new ActivityPub($user)
+        $actor=$ap->GetActorByUrl($user,$url);
         if (!(isset($actor["publicKey"])))
             return false;
 
@@ -170,46 +151,5 @@ class ActivityPubUserController extends Controller
 
     }
 
-// copiado de chatgpt para verificar la firma "interna"
-function verifySignature(array $activity)
-{
-    if (!isset($activity['signature'])) {
-        throw new Exception("No signature found in the activity.");
-    }
-
-    $signature = $activity['signature'];
-    if (!isset($signature['signatureValue'], $signature['creator'])) {
-        throw new Exception("Signature structure is invalid.");
-    }
-
-    $signedObject = json_encode($activity['object'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-    $signatureValue = base64_decode($signature['signatureValue']);
-    $creatorUrl = $signature['creator'];
-
-    // Obtener la clave pública del actor (suponiendo que el actor tiene la clave en su perfil)
-    $publicKey = fetchPublicKey($creatorUrl);
-    if (!$publicKey) {
-        throw new Exception("Failed to retrieve the public key.");
-    }
-
-    // Verificar la firma usando la clave pública
-    $verified = openssl_verify($signedObject, $signatureValue, $publicKey, OPENSSL_ALGO_SHA256);
-
-    return $verified === 1;
-}
-
-function fetchPublicKey(string $actorUrl)
-{
-    $actorData = Activitypub::GetActorByUrl($actorUrl);
-    if (!$actorData) {
-        return false;
-    }
-
-    $actor = json_decode($actorData, true);
-    if (!isset($actor['publicKey']['publicKeyPem'])) {
-        return false;
-    }
-
-    return $actor['publicKey']['publicKeyPem'];
 }
 
