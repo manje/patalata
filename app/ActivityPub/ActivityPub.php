@@ -105,7 +105,6 @@ class ActivityPub
         if (is_array($url)) return $url;
         if(!\p3k\url\is_url($url)) return false;
         if ($out=Cache::get($url)) return $out;
-        Log::info("NoCache $url ($cache)");
         $domain=parse_url($url, PHP_URL_HOST);
         if (false)
         if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
@@ -118,7 +117,6 @@ class ActivityPub
             $out=json_decode($body,true);
             if ($out) return $out;
         }
-        
         $idbantmp="idbantmp $domain";
         if ($out=Cache::get($idbantmp))
         {
@@ -127,12 +125,15 @@ class ActivityPub
         $idca="$domain ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
         #echo "    $num   ";
+        if ($num++>100) Log::info("muchas peticiones a $domain ($num) ".date("YmdHis"));
         if ($num++>100) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
+        Log::info("NoCache $url ($cache)");
         $out=$this->GetUrlFirmado($url);
         if (!(is_array($out)))
         {
             $out=['error'=>"No es array: $url - $out"];
+            Log::info($out);
             Cache::put($url,$out,120);
             return $out;
         }
@@ -140,14 +141,15 @@ class ActivityPub
             if ($out['codhttp']==429)
             {
                 $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
+                Log::info($out);
                 Cache::put($idbantmp,$out,60);
             }
         if (isset($out['errorcurl']))
         {
             if ($out['errorcurl']>0)
             {
-                $out['error']='Error de curl';
                 $out=['error'=>'curl','coderror'=>$out['errorcurl']];
+                Log::info($out);
                 Cache::put($idbantmp,$out,10);
             }
         }
@@ -503,6 +505,8 @@ Este es un ejemplo de lo que nos hemos encontrado
             return false;
         }
     }
+
+
 
 
     public function InBox($activity)
