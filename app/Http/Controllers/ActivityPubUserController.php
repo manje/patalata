@@ -61,7 +61,7 @@ class ActivityPubUserController extends Controller
             if ($res)
             {
                 Log::info("Valida\tsignature LD t $activity[type] $actor[id] ");
-                return $ap->InBox($user,$activity);
+                return $ap->InBox($activity);
             }
             Log::info("Inválida\tsignature LD $activity[type] $actor[id] ");
             return response()->json(['error' => 'Invalid signature'], 401);
