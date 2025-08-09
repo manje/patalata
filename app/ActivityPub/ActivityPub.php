@@ -621,7 +621,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                                     
                 // Compruebo si el actor está entre los seguidos del usuario
                 
-                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $user->GetActivity()['id'])->first();
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if (is_null($seguido))
                 {
                    $object=$activity['object']['inReplyTo'];
@@ -636,10 +636,9 @@ Este es un ejemplo de lo que nos hemos encontrado
                    $tmp=$this->GetReplys($object);
                 }
                 
-                // Compruebo si el actor está entre los seguidos del usuario
-                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if ($seguido)
                 {
+                    Log::info("es seguido");
                     // un create de un actor a el que seguimos lo incluimos en el timeline siempre, si después la actividad es erronea o lo que sea lo vermos después
                     if ( $activity["object"]["attributedTo"] != $activity['actor'] )
                     {
@@ -713,7 +712,6 @@ Este es un ejemplo de lo que nos hemos encontrado
                     Cache::forget($activity['object']['id']);
                     Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);
                 }
-                Log::info('Update activity: '.print_r($activity,1));
                 return response()->json(['message' => 'Ok'],200);
             case 'Invite':
                 Member::create([
@@ -733,12 +731,11 @@ Este es un ejemplo de lo que nos hemos encontrado
             default:
                 Log::info('Unknown activity type root: ' . $activity['type']);
                 Log::info(print_r($activity,1));
-                Log::error("esto no es normal2");
-                throw new \Exception('no es normal');
-                return response()->json(['message' => 'Unknow activity '.$activity['type']],501);
-                
+                Log::error("esto no es normal234323");
+                #throw new \Exception('no es normal');
+                return response()->json(['message' => 'Unknow activity '.$activity['type']],501);                
         }
-        Log::info(print_r($activity,1));
+        Log::info('fin Inbox');
         Log::info('Aquí no deberíamos llegar nunca, debemos devolver siempre una respuesta http');
         return true;
     }
@@ -761,12 +758,10 @@ Este es un ejemplo de lo que nos hemos encontrado
         if (is_array($object)) $object=$object['id'];
         $listb=$this->GetListCollection($object);
         $listb=array_reverse($listb);
-        Log::info(" lsit es 2343298 ".print_r($listb,1));
         $sincronizado=true;
         foreach ($listb as $v)
         {   
             if (is_array($v)) $v=$v['id'];
-            Log::info("rep $v");
             if (!in_array($v,$idsr))
             {
                 $sincronizado=false;
@@ -777,7 +772,6 @@ Este es un ejemplo de lo que nos hemos encontrado
                 ]);
             }
         }
-        Log::info("asfd  003");
         if (!$sincronizado)
         {
             $list=Reply::where('object',$id)->orderBy('id','desc')->get();
@@ -788,7 +782,6 @@ Este es un ejemplo de lo que nos hemos encontrado
             }
             $list=$new;
         }
-        Log::info("retur de list ".print_r($list,1));
         return $idsr;
     }
 

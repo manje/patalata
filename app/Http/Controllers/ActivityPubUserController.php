@@ -21,6 +21,8 @@ use Illuminate\Support\Facades\Http;
 
 use App\ActivityPub\HTTPSignature;
 use App\ActivityPub\ActivityPub;
+use App\ActivityPub\LDSignature;
+
 use Request as Rq;
 use App\Traits\ModelFedi;
 
@@ -39,15 +41,33 @@ class ActivityPubUserController extends Controller
 
     public function inbox(Request $request, $slug): JsonResponse
     {
+        $signatureData = HTTPSignature::parseSignatureHeader(Rq::header('signature'));
         // Busca al usuario por su slug
         $user=ActivityPub::GetIdentidadBySlug($slug);
+        $ap=new ActivityPub($user);
         $path='/ap/users/'.$user->slug.'/inbox';
         $activity = $request->json()->all();
-        if (!$this->verifySignature($user,$activity,$path)) 
+        if (!$this->verifySignature($activity,$path))
         {
+            if (!isset($activity['signature']))
+                return response()->json(['error' => 'Invalid signature'], 401);
+            $sig=new LDSignature();
+            $actor=$ap->GetActorByUrl($activity['actor']);
+            if (!(isset($actor['publicKey'])))
+            {
+                return response()->json(['error' => 'Invalid signature'], 401);
+            }
+            $res=$sig->verify($activity,$actor['publicKey']['publicKeyPem']);
+            if ($res)
+            {
+                Log::info("Valida\tsignature LD t $activity[type] $actor[id] ");
+                return $ap->InBox($user,$activity);
+            }
+            Log::info("Inválida\tsignature LD $activity[type] $actor[id] ");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
-        return ActivityPub::InBox($user,$activity);
+        Log::info("Válida signature $path ".$user->slug." ".$signatureData['algorithm']);
+        return $ap->InBox($activity);
     }
 
     public function following($slug): JsonResponse
@@ -77,8 +97,9 @@ class ActivityPubUserController extends Controller
     }
 
 
-    private function verifySignature($user,$activity,$path): bool
+    private function verifySignature($activity,$path): bool
     {
+        $ap=new ActivityPub(null);
         if(!Rq::header('signature')) {
           return response()->json([
             'error' => 'Missing Signature header'
@@ -90,9 +111,7 @@ class ActivityPubUserController extends Controller
             return false;
     
         $url=$activity['actor'];
-        $user=ActivityPub::GetIdentidadBySlug($user->slug);
-        $ap=new ActivityPub($user)
-        $actor=$ap->GetActorByUrl($user,$url);
+        $actor=$ap->GetActorByUrl($url);
         if (!(isset($actor["publicKey"])))
             return false;
 
@@ -152,4 +171,3 @@ class ActivityPubUserController extends Controller
     }
 
 }
-
