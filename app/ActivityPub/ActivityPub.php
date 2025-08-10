@@ -138,12 +138,19 @@ class ActivityPub
             return $out;
         }
         if (isset($out['codhttp']))
+        {
             if ($out['codhttp']==429)
             {
                 $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
                 Log::info($out);
                 Cache::put($idbantmp,$out,60);
             }
+            if ($out['codhttp']==410) // Gone
+            {
+                Cache::put($url,$out,60*24*365);
+                return $out;
+            }
+        }
         if (isset($out['errorcurl']))
         {
             if ($out['errorcurl']>0)
