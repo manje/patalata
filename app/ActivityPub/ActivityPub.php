@@ -348,7 +348,7 @@ class ActivityPub
         $idcache="list collection  ".$idlist;
         $out=Cache::get($idcache);
         if ($out) Log::info($idcache);
-        if ($out) Log::info(print_r($out,1));
+        if ($out) Log::debug(print_r($out,1));
         if ($out) return $out;
         $cachetmp="persistente $idlist";
         $cachetmp=Cache::get($cachetmp);
@@ -507,8 +507,6 @@ Este es un ejemplo de lo que nos hemos encontrado
     }
 
 
-
-
     public function InBox($activity)
     {
         // Aquí llega la petición con la firma verificada
@@ -519,9 +517,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                 Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
-
-            $txt="InBox ".$this->user->slug." $activity[type]: $activity[actor]";
-            #Log::info(print_r($activity,1));
+            Log::info("InBox ".$this->user->slug." $activity[type]: $activity[actor]");
             if (isset($activity['object']))
                 if (is_string($activity['object']))
                     $txt.="\t$activity[object]";
