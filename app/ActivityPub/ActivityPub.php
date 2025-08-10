@@ -518,12 +518,6 @@ Este es un ejemplo de lo que nos hemos encontrado
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
             Log::info("InBox ".$this->user->slug." $activity[type]: $activity[actor]");
-            if (isset($activity['object']))
-                if (is_string($activity['object']))
-                    $txt.="\t$activity[object]";
-                else
-                    if (isset($activity['object']['id']))
-                        $txt.="\t".$activity['object']['id'];
             switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
@@ -649,6 +643,7 @@ Este es un ejemplo de lo que nos hemos encontrado
                     $line->user=$this->user->GetActivity()['id'];
                     $line->actor_id=$activity['actor'];
                     $line->activity=$activity["object"]['id'];
+                    $line->save();
                 }
                 return response()->json(['message' => 'Accept'],202);
             }

@@ -46,7 +46,7 @@ class Timeline extends Component
         if ($this->user)
         {
             $this->ap = new ActivityPub($this->user);
-            $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(100)->get();
+            $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','<', $this->ultimo)->orderBy('id', 'desc')->take(50)->get();
             foreach ($list as $item)
             {
                 $a=$this->ap->GetObjectByUrl($item->activity);
@@ -89,7 +89,7 @@ class Timeline extends Component
             {
                 $this->siguienteprimero=false;
                 $this->nuevas=$list;
-                $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','>', $this->primero->id)->orderBy('id', 'desc')->take($list)->get();
+                $list=TL::where('user',$this->user->GetActivity()['id'])->where('id','>', $this->primero->id)->orderBy('id', 'desc')->get();
                 $this->nuevaslist=[];
                 $this->ap = new ActivityPub($this->user);
                 foreach ($list as $item)

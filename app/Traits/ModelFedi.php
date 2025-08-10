@@ -16,6 +16,8 @@ use App\Models\Team;
 use App\Models\Post;
 use App\Models\Outbox;
 use App\Models\Apfile;
+use App\Models\Like;
+use App\Models\Announce;
 
 use App\ActivityPub\ActivityPub;
 
@@ -492,17 +494,7 @@ trait ModelFedi
                 'type' => 'Place'
             ];
             if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-            if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
-
         }
-
-
-
 
 
         if ($this->APtype=='Announce')
@@ -537,6 +529,23 @@ trait ModelFedi
                 'content' => $this->content,
                 'mediaType' => 'text/html',
                 'attachment' => $this->getActivityPubAttachments()
+            ];
+        }
+        $validos=['Note','Article','Announce','Question','Page'];
+        Log::info($this->APtype);
+        if (in_array($this->APtype,$validos))
+        {
+            $numlikes=Like::where('object',Route($idmodelo.'.show', ['slug' => $this->slug]))->count();
+            $numannounces=Announce::where('object',Route($idmodelo.'.show', ['slug' => $this->slug]))->count();
+            $activity['likes'] = [
+                'id' => Route($idmodelo.'.show', ['slug' => $this->slug]).'/likes',
+                'type' => 'Collection',
+                'totalItems' => $numlikes
+            ];
+            $activity['shares'] = [
+                'id' => Route($idmodelo.'.show', ['slug' => $this->slug]).'/shares',
+                'type' => 'Collection', 
+                'totalItems' => $numannounces
             ];
         }
         if ($this->APtype=='Block')
@@ -616,8 +625,10 @@ trait ModelFedi
             $res = $listado->orderBy('id','desc')->paginate(20);
         else
             $res = $listado->orderBy('id')->paginate(20);
+        $listado->get();
         $list = [];
         foreach ($res as $item) $list[] = $item->object;
+        Log::info(print_r($list,1));
         $col = [
             '@context' => 'https://www.w3.org/ns/activitystreams',
             'id' => $url,
