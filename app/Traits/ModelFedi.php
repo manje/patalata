@@ -532,7 +532,6 @@ trait ModelFedi
             ];
         }
         $validos=['Note','Article','Announce','Question','Page'];
-        Log::info($this->APtype);
         if (in_array($this->APtype,$validos))
         {
             $numlikes=Like::where('object',Route($idmodelo.'.show', ['slug' => $this->slug]))->count();

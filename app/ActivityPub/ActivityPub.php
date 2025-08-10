@@ -347,7 +347,6 @@ class ActivityPub
         // esta función estaría guay que guardara en cache persistente y comprobara solo si hay nuevos
         $idcache="list collection  ".$idlist;
         $out=Cache::get($idcache);
-        if ($out) Log::info($idcache);
         if ($out) Log::debug(print_r($out,1));
         if ($out) return $out;
         $cachetmp="persistente $idlist";
@@ -480,20 +479,6 @@ class ActivityPub
                 if ($solocount) return count($items);
                 return $items;
             }
-/*            
-
-hay colecciones que no tienen ni items ni número de items
-
-Este es un ejemplo de lo que nos hemos encontrado
-
-[2025-01-21 14:59:16] production.INFO: Array
-(
-    [@context] => https://www.w3.org/ns/activitystreams
-    [id] => https://infosec.exchange/users/xxxxxxxx/followers
-    [type] => OrderedCollection
-)
-*/
-
             return false;
         }
         else
