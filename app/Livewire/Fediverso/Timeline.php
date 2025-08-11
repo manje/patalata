@@ -21,7 +21,6 @@ class Timeline extends Component
     public $numactividades=20;
     public $ultimo=0;
     public $numactor=20;
-    public $idsactor=[];
     protected $ap;
 
     protected $listeners = ['loadMore'];
@@ -57,13 +56,7 @@ class Timeline extends Component
                     $a=$v;
 
                 if (isset($a['id']))
-                {
-                    if (!in_array($a['id'], $this->idsactor))
-                    {
-                        $this->idsactor[] = $a['id'];
-                        $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
-                    }
-                }
+                    $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
 
             }
         }
@@ -145,7 +138,6 @@ class Timeline extends Component
                     $a=$this->ap->GetObjectByUrl($v);
                 else
                     $a=$v;
-                $this->idsactor[]=$a['id'];
                 if (isset($a['id']))
                     $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
 
