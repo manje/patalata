@@ -20,6 +20,8 @@ class Timeline extends Component
     public $siguienteprimero=false;
     public $numactividades=20;
     public $ultimo=0;
+    public $numactor=20;
+    public $idsactor=[];
     protected $ap;
 
     protected $listeners = ['loadMore'];
@@ -43,6 +45,28 @@ class Timeline extends Component
 
     public function loadMore()
     {
+        if ($this->actor)
+        {
+            $this->numactor=$this->numactor+20;
+            $outbox=(array)$this->ap->GetColeccion($this->actor['outbox'],false,$this->numactor);
+            foreach ($outbox as $k=>$v)
+            {
+                if (is_string($v)) 
+                    $a=$this->ap->GetObjectByUrl($v);
+                else
+                    $a=$v;
+
+                if (isset($a['id']))
+                {
+                    if (!in_array($a['id'], $this->idsactor))
+                    {
+                        $this->idsactor[] = $a['id'];
+                        $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
+                    }
+                }
+
+            }
+        }
         if ($this->user)
         {
             $this->ap = new ActivityPub($this->user);
@@ -108,11 +132,12 @@ class Timeline extends Component
 
     public function loadPosts()    
     {
-        $this->ap = new ActivityPub($this->user);
+        $this->ap = new ActivityPub(ActivityPub::GetIdentidad());
         if ($this->actor)
         {
             $u=ActivityPub::GetIdentidad();
-            $outbox=(array)$this->ap->GetColeccion($this->actor['outbox'],false,5);
+            $outbox=(array)$this->ap->GetColeccion($this->actor['outbox'],false,3);
+            Log::info("outbox devuelto ".count($outbox));
             $this->timeline=[];
             foreach ($outbox as $k=>$v)
             {
@@ -120,9 +145,12 @@ class Timeline extends Component
                     $a=$this->ap->GetObjectByUrl($v);
                 else
                     $a=$v;
+                $this->idsactor[]=$a['id'];
                 if (isset($a['id']))
                     $this->timeline[]=['id'=>$a['id'],'serial'=>$this->serial,'act'=>$a];
+
             }
+            Log::info(" timeline final ".count($this->timeline));
         }
         if ($this->user)
         {

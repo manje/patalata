@@ -49,5 +49,26 @@
                 <livewire:fediverso.timeline :actor="$actor" :key='"timelineactor"' />
             @endauth
         </div>
+
+        <script>
+
+            let container = window;
+
+            window.onscroll = function() {
+                loadMore();
+            };
+
+            function loadMore() {
+                let scrollTop = window.scrollY || document.documentElement.scrollTop;
+                let clientHeight = window.innerHeight;
+                let scrollHeight = document.documentElement.scrollHeight;
+                if (scrollTop + clientHeight >= scrollHeight) {
+                    Livewire.dispatch('loadMore');
+                    // enseño el div de buscandomas
+                    document.getElementById('buscandomas').style.display = 'block';
+                }
+            }
+             
+        </script>
     </div>
 </x-fediverso-layout>

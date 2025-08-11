@@ -154,12 +154,14 @@ class Activity extends Component
         if (in_array('https://www.w3.org/ns/activitystreams#Public', $this->activity['to']))
             $this->activity['visible']='public';
         if (isset($this->activity['type']))
+        {
             if ($this->activity['type']=='Announce')
                 $this->activity['visible']='public';
-        $soportado=['Note','Page','Article','Event','Question','Audio','Video','Image','Announce'];
-        if (!(in_array($this->activity['type'], $soportado)))
-        {
-            $this->activity['error']='Actividad no soportada '.$this->activity['type'];#.'<pre>'.print_r($this->activity,1).'</pre>';
+            $soportado=['Note','Page','Article','Event','Question','Audio','Video','Image','Announce'];
+            if (!(in_array($this->activity['type'], $soportado)))
+            {
+                $this->activity['error']='Actividad no soportada '.$this->activity['type'];#.'<pre>'.print_r($this->activity,1).'</pre>';
+            }
         }
     }
 
@@ -252,7 +254,8 @@ class Activity extends Component
 
     public function render()
     {
-        #Log::info(print_r($this->activity,1));
+        if (!(isset($this->activity['type'])))
+            Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')

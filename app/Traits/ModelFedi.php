@@ -531,9 +531,11 @@ trait ModelFedi
                 'attachment' => $this->getActivityPubAttachments()
             ];
         }
-        $validos=['Note','Article','Announce','Question','Page'];
+
+        $validos=['Note','Article','Question','Page'];
         if (in_array($this->APtype,$validos))
         {
+            $idmodelo=Str::plural(Str::lower(class_basename($this)));
             $numlikes=Like::where('object',Route($idmodelo.'.show', ['slug' => $this->slug]))->count();
             $numannounces=Announce::where('object',Route($idmodelo.'.show', ['slug' => $this->slug]))->count();
             $activity['likes'] = [

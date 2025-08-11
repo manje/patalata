@@ -446,6 +446,8 @@ class ActivityPub
                     $items=[];
                 if (isset($col['orderedItems']))
                     $items=$col['orderedItems'];
+                if (count($items)>=$limite) return $items;
+
                 while (isset($col['next']))
                 {
                     $col=$this->GetObjectByUrl($col['next'],10);
@@ -472,12 +474,8 @@ class ActivityPub
                                 $items[]=$i['id'];
                                 Cache::Put($i['id'],$i,60*60*24);
                             }
+                            if (count($items)>=$limite) return $items;
                         }
-                    if ($limite)
-                    {
-                        $items=array_slice($items,0,$limite);
-                        return $items;   
-                    }
                     if ($solocount)
                     if (count($items)>10000) 
                       return " > 10k ";
