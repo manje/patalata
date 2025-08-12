@@ -124,7 +124,6 @@ class ActivityPub
         }
         $idca="$domain ".date("Y-m-d H").( (int)(date('i')/5)); // 5 minutos
         $num=(int)Cache::get($idca);
-        #echo "    $num   ";
         if ($num++>100) Log::info("muchas peticiones a $domain ($num) ".date("YmdHis"));
         if ($num++>100) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
@@ -166,6 +165,7 @@ class ActivityPub
         }
         else
         {
+            Log::info("guarco cache en $cache minutos");
             Cache::put($url,$out,$cache*60);
         }
         return $out;
@@ -792,14 +792,16 @@ class ActivityPub
         if(!\p3k\url\is_url($url)) return false; 
         if (!($this->user))
         {
+            Log::info("sin firmar $url");
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
             curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net');
             $date = new DateTime('UTC');
             $headers = [
-                'Accept' => 'application/activity+json, application/ld+json, application/json' ,
-                'Content-Type' => 'application/json',
+                'Accept: application/activity+json, application/ld+json, application/json',
+#               'Accept' => 'application/activity+json, application/ld+json, application/json' ,
+#                'Content-Type' => 'application/json',
             ];
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             $response = curl_exec($ch);
@@ -807,12 +809,12 @@ class ActivityPub
         else
         {
 	        $headers = HTTPSignature::sign($this->user, false, $url);
-	        #print_R($headers);
 	        $ch = curl_init($url);
 	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 	        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 	        curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net');
 	        curl_setopt($ch, CURLOPT_HEADER, true);
+	        Log::info("headers ".print_r($headers,true));
 	        $response = curl_exec($ch);
         }
         if (curl_errno($ch)) {
@@ -830,6 +832,7 @@ class ActivityPub
                 $res['codhttp']=$codigo;
             return $res;
         }
+        Log::info("error 8010 $url");
         return ['error'=>"$url no es un application/activity+json",'res'=>$responseBody,'codhttp'=>'8010'];
     }
 
