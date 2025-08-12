@@ -792,7 +792,6 @@ class ActivityPub
         if(!\p3k\url\is_url($url)) return false; 
         if (!($this->user))
         {
-            Log::info("sin firmar $url");
             $ch = curl_init($url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_HEADER, true);
@@ -814,11 +813,9 @@ class ActivityPub
 	        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 	        curl_setopt($ch, CURLOPT_USERAGENT, 'patalata.net');
 	        curl_setopt($ch, CURLOPT_HEADER, true);
-	        Log::info("headers ".print_r($headers,true));
 	        $response = curl_exec($ch);
         }
         if (curl_errno($ch)) {
-                Log::info('error curl',[curl_errno($ch),curl_error($ch)]);
                 $codigo=curl_getinfo($ch, CURLINFO_HTTP_CODE);
                 return ['error'=>curl_error($ch),'errorhttp'=>$codigo,'errorcurl'=>curl_errno($ch)];
         }
@@ -832,7 +829,6 @@ class ActivityPub
                 $res['codhttp']=$codigo;
             return $res;
         }
-        Log::info("error 8010 $url");
         return ['error'=>"$url no es un application/activity+json",'res'=>$responseBody,'codhttp'=>'8010'];
     }
 
