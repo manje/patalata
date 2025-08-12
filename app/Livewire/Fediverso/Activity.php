@@ -64,6 +64,13 @@ class Activity extends Component
             else
                 $this->activity=$this->activity['object'];
         }
+        if ($this->activity['type']=="Update")
+        {
+            if (is_string($this->activity['object']))    
+                $this->activity=$this->ap->GetObjectByUrl($this->activity['object']);
+            else
+                $this->activity=$this->activity['object'];
+        }
         if (isset($this->activity['error'])) $this->activity['type']="Error";
         if (isset($this->activity['errors'])) $this->activity['type']="Error";
         if (isset($this->activity['actor']))

@@ -420,6 +420,7 @@ class ActivityPub
 
     public function GetColeccion($idlist,$solocount=false,$limite=false)
     {
+        Log::info(print_r($idlist,1));
         if (is_string($idlist))
             $col=$this->GetObjectByUrl($idlist,3);
         else
@@ -438,6 +439,11 @@ class ActivityPub
         if (isset($col['error'])) return $col;
         if  ((isset($col['type'])) &&  ( ($col['type']=='Collection') ||   ($col['type']=='OrderedCollection') )  ) 
         {
+            Log::info(print_r($col,1));
+            if (isset($col['orderedItems']))
+            {
+                $items=$col['orderedItems'];
+            }
             if (isset($col['first'])) // puede ser que nos de el nº pero no estén visibles los elementos
             {
                 $x=$col['first'];
@@ -454,6 +460,7 @@ class ActivityPub
                 if (isset($col['orderedItems']))
                     $items=$col['orderedItems'];
                 if (count($items)>=$limite) return $items;
+            }
 
                 while (isset($col['next']))
                 {
@@ -490,7 +497,7 @@ class ActivityPub
                 }
                 if ($solocount) return count($items);
                 return $items;
-            }
+            
             return false;
         }
         else
