@@ -159,13 +159,21 @@ class ActivityPub
                 Cache::put($idbantmp,$out,10);
             }
         }
+        if (isset($out['type']))
+        {
+            if ($out['type']=='Tombstone')
+            {
+                Cache::put($url,$out,60*60*24*365);
+                return $out;
+            }
+        }
         if (isset($out['error']))
         {
             Cache::put($url,$out,30);
         }
         else
         {
-            Log::info("guarco cache en $cache minutos");
+            Log::info("gaurdo cache ($cache) $url ");
             Cache::put($url,$out,$cache*60);
         }
         return $out;
@@ -351,6 +359,7 @@ class ActivityPub
 
     public function GetListCollection($idlist,$limite=0)
     {
+        // funcion depreciada a favor de GetColeccion
         // esta función estaría guay que guardara en cache persistente y comprobara solo si hay nuevos
         $idcache="list collection  ".$idlist;
         $out=Cache::get($idcache);
@@ -363,7 +372,6 @@ class ActivityPub
         else
             $list=$cachetmp;
         $col=$this->GetObjectByUrl($idlist,5);
-        Log::info('first col '.print_r($col,1));
         // esto tiene tipo collection y un first
         if ($col['type']!='Collection')
         {
@@ -399,7 +407,6 @@ class ActivityPub
                         $list=array_merge([$item],$list);
                 }
                 if (!(isset($col['next']))) $seguir=false;
-                if (!(isset($col['next']))) Log::info(" me imagino que es normal pq llegadomos al final ".print_r($col,1));
                 if ($seguir)
                 {
                     $col=$this->GetObjectByUrl($col['next'],5);

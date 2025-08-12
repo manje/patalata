@@ -22,11 +22,11 @@ class SelCampaign extends Component
         $this->user=auth()->user();
         if ($campaigns)
             $this->listado=$campaigns;
-        $this->ap=new ActivityPub($this->user);
     }
 
     public function add($id)
     {
+        $this->ap=new ActivityPub($this->user);
         $actor=$this->ap->GetActorByUrl($id);
         $this->listado[$id]=$actor;
         $this->campaigns=[];
@@ -46,6 +46,7 @@ class SelCampaign extends Component
 
     public function updatedSearch()
     {
+        $this->ap=new ActivityPub($this->user);
         $this->busqueda=[];
         if (strlen($this->search)<3) return;
         $completo=$this->ap->GetActorByUsername($this->search);
