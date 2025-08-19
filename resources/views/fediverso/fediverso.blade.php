@@ -10,9 +10,7 @@
             pueden seguirte en otras instancias.
         @endauth
         </p> <p>
-            Las actividades como notas o artículos se envían
-            a tus seguidores, pero todavía no está implementado publicar desde el pequeño
-            textarea de la izquierda, ni tampoco las interaciones como replys, likes y rts.
+            estamos terminando de implementar hacer reply
         </p> <p>
             Al ser una primera implementación puede tener todavía errores.
         </p> <p>

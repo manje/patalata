@@ -7,6 +7,9 @@ use App\Models\Place;
 use App\Models\Member;
 use App\Models\Team;
 use App\Models\Apfile;
+use App\Models\Reply;
+use App\ActivityPub\ActivityPub;
+use App\Traits\ModelFedi;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -30,7 +33,6 @@ class EventController extends Controller
     public function show(Request $request, $slug)
     {
         $event = Event::where('slug', $slug)->firstOrFail();
-        Log::info($event);
         if ($request->wantsJson())
             return response()->json($event->GetActivity());
         return view('events.show', compact('event'));
@@ -301,4 +303,15 @@ class EventController extends Controller
         }
         return redirect()->route('events.show', $event->slug);        
     }
+
+    public function replies($slug)
+    {
+        Log::debug("EventController::replies($slug)");
+        $event = Event::where('slug', $slug)->firstOrFail();
+        Log::debug($event);
+        $listado=Reply::where('reply', $event->GetActivity()['id']);
+        $url=route('events.replies', ['slug' => $slug]);
+        return $event->Collection($listado,$url);
+    }
+
 }

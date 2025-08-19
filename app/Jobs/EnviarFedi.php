@@ -52,13 +52,13 @@ class EnviarFedi implements ShouldQueue
         $json=json_encode($json);
         $ap=new ActivityPub($this->data['user']);
         $actor=$ap->GetActorByUrl($this->data['follower']);
-        if (isset($actor['codhttp'])
+        if (isset($actor['codhttp']))
         {
             # Aquí (o antes) estaría bien borrar de las relaciones de follow y followers a un actor que devuelva 410
             if ($actor['codhttp']!=410)
-                return true;
+                return;
             if ($actor['codhttp']!=8010) // esto es que no hay datos json en esta url
-                return true;
+                return;
         }
         $headers = HTTPSignature::sign($this->data['user'], $json, $actor['inbox']);
         $ch = curl_init($actor['inbox']);

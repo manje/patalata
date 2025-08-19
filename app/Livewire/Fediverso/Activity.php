@@ -189,6 +189,13 @@ class Activity extends Component
             $this->respuestas=true;
         }
     }
+
+    public function responder($id)
+    {
+        Log::info("responder a $id");
+        $this->dispatch('responder_actividad',$id);
+    }
+
     public function setlike()
     {
         $this->ap();

@@ -5,6 +5,9 @@ use App\Models\Nota;
 use App\Models\Municipio;
 use App\Models\Category;
 use App\Models\NotaFile;
+use App\Models\Reply;
+use App\ActivityPub\ActivityPub;
+use App\Traits\ModelFedi;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,7 +21,8 @@ class NotaController extends Controller
     }
 
     public function show(Request $request, $slug)
-    {   
+    {
+        Log::info("show $slug");
         // busco por id que es más rápido
         $nota = Nota::with('equipo', 'creador','notaFiles')->where('id', (int)$slug)->firstOrFail();
         if ($request->wantsJson()) {
@@ -96,7 +100,15 @@ class NotaController extends Controller
 	            ]);
 	        }
 	    }
-
         return redirect()->route('notas.show', $nota->slug);
     }
+
+    public function replies($slug)
+    {
+        $nota = Nota::query()->where('id', (int)$slug)->firstOrFail();
+        $listado=Reply::where('reply', $nota->GetActivity()['id']);
+        $url=route('articles.replies', ['slug' => $slug]);
+        return $nota->Collection($listado,$url);
+    }
+
 }

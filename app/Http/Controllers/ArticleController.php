@@ -7,6 +7,9 @@ use App\Models\Place;
 use App\Models\Member;
 use App\Models\Team;
 use App\Models\Apfile;
+use App\Models\Reply;
+use App\ActivityPub\ActivityPub;
+use App\Traits\ModelFedi;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -212,4 +215,14 @@ class ArticleController extends Controller
         }
         return redirect()->route('articles.show', $article->slug);        
     }
+
+    public function replies($slug)
+    {
+        $article = Article::where('slug', $slug)->firstOrFail();
+        $listado=Reply::where('reply', $article->GetActivity()['id']);
+        $url=route('articles.replies', ['slug' => $slug]);
+        return $article->Collection($listado,$url);
+    }
+
+
 }

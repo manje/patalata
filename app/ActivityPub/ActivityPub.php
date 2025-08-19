@@ -59,9 +59,6 @@ class ActivityPub
         return $user;
     }
 
-
-
-
     static function GetIdentidadBySlug($slug)
     {
         $user=User::where('slug',$slug)->first();
@@ -76,10 +73,8 @@ class ActivityPub
         // Si el actor se borra 
         $key="-actor-".$url;
         if ($out=Cache::get($key)) 
-        {
-          if (isset($out['userfediverso'])) return $out;
-        }
-        $out=$this->GetObjectByUrl($url);
+          return $out;
+        $out=$this->GetObjectByUrl($url,60);
         if (is_null($out)) return ['error'=>'response null'];
         if (isset($out['error'])) return $out;
         if (isset($out['following'])) $out['countfollowing']=$this->GetColeccion($out['following'],true);
@@ -88,19 +83,17 @@ class ActivityPub
         if (isset($out['preferredUsername']))
             $out['userfediverso']=$out['preferredUsername']."@$d";
         else
-        {   
-            print_r($out);
-            #$out['error']='Actor inválido';
+        {
+            Log::error('234698'.print_r($out,1));
+            $out['error']='Actor inválido';
             return $out;
         }
         Cache::put($key,$out,3600*24);
         return $out;
     }
 
-
     public function GetObjectByUrl($url,$cache=false)
     {
-        if ($cache===false) $cache=60*24*15;
         // hay que revisar esta política de cache, guardar en caché pública solo objetos públicos, distinto ttl según type del objeto
         if (is_array($url)) return $url;
         if(!\p3k\url\is_url($url)) return false;
@@ -129,26 +122,42 @@ class ActivityPub
         Cache::put($idca,$num,3600);
         Log::info("NoCache $url ($cache)");
         $out=$this->GetUrlFirmado($url);
+        if ($cache===false) $cache=60*24*15;
+
         if (!(is_array($out)))
         {
             $out=['error'=>"No es array: $url - $out"];
             Log::info($out);
-            Cache::put($url,$out,120);
-            return $out;
+            $cache=120;
         }
         if (isset($out['codhttp']))
         {
-            if ($out['codhttp']==429)
+            $num=(int)("$out[codhttp]"[0]);
+            if ($num > 2)
             {
-                $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
-                Log::info($out);
-                Cache::put($idbantmp,$out,60);
-            }
-            if ($out['codhttp']==410) // Gone
-            {
-                Cache::put($url,$out,60*24*365);
-                return $out;
-            }
+                $cache=3600;  // para peticiones con errores http las dejamos en cache solo una hora
+                switch($out['codhttp'])
+                {
+                    case(429):
+                        $out=['error'=>'temporal too may','codhttp'=>$out['codhttp']];
+                        $cache=60;
+                        break;
+                    case(410): // Gone
+                        #$out=['error'=>'Gone','codhttp'=>$out['codhttp']];
+                        $cache=60*24*30;
+                        break;
+                    case(404): 
+                        #$out=['error'=>'Not Found','codhttp'=>$out['codhttp']];
+                        $cache=60*24;
+                        break;
+                    case(403): 
+                        #$out=['error'=>'Forbidden','codhttp'=>$out['codhttp']];
+                        $cache=60*24;
+                        break;
+                    default:
+                        Log:info("check codigos ".print_r($out,1)); // Hay que procesar todos los códigos de error http
+                }
+            }            
         }
         if (isset($out['errorcurl']))
         {
@@ -156,26 +165,21 @@ class ActivityPub
             {
                 $out=['error'=>'curl','coderror'=>$out['errorcurl']];
                 Log::info($out);
-                Cache::put($idbantmp,$out,10);
+                // Estos son errores de conexión, pueden ser tanto error puntual de conexión
+                // habría que controlar los reintentos en base al host y no a la url
+                $cache=10;
             }
         }
         if (isset($out['type']))
         {
             if ($out['type']=='Tombstone')
-            {
-                Cache::put($url,$out,60*60*24*365);
-                return $out;
-            }
+                $cache=60*24*365;
         }
         if (isset($out['error']))
-        {
-            Cache::put($url,$out,30);
-        }
-        else
-        {
-            Log::info("gaurdo cache ($cache) $url ");
-            Cache::put($url,$out,$cache*60);
-        }
+            $cache=30;
+        if ($cache===false) $cache=60*24*15;
+        Log::info("guardo cache ($cache) $url");
+        Cache::put($url,$out,$cache*60);
         return $out;
     }
 
@@ -440,6 +444,7 @@ class ActivityPub
         if  ((isset($col['type'])) &&  ( ($col['type']=='Collection') ||   ($col['type']=='OrderedCollection') )  ) 
         {
             Log::info(print_r($col,1));
+            $items=[];
             if (isset($col['orderedItems']))
             {
                 $items=$col['orderedItems'];
@@ -455,8 +460,6 @@ class ActivityPub
                 }
                 if (isset($col['items']))
                     $items=$col['items'];
-                else
-                    $items=[];
                 if (isset($col['orderedItems']))
                     $items=$col['orderedItems'];
                 if (count($items)>=$limite) return $items;
@@ -521,7 +524,7 @@ class ActivityPub
                 Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
-            Log::info("InBox ".$this->user->slug." $activity[type]: $activity[actor]");
+            Log::info("InBox ".$this->user->slug.": type: $activity[type] | actor: $activity[actor]");
             switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
@@ -630,13 +633,10 @@ class ActivityPub
                        'object'=>$object,
                        'reply'=>$reply
                    ]);
-                   // ############## xxxxxxxxxxxxxxx esto es solo para debug
-                   $tmp=$this->GetReplys($object);
                 }
                 
                 if ($seguido)
                 {
-                    Log::info("es seguido");
                     // un create de un actor a el que seguimos lo incluimos en el timeline siempre, si después la actividad es erronea o lo que sea lo vermos después
                     if ( $activity["object"]["attributedTo"] != $activity['actor'] )
                     {
@@ -712,6 +712,10 @@ class ActivityPub
                     Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);
                 }
                 return response()->json(['message' => 'Ok'],200);
+            // Tratamos todos estas actividades como de movimientos de miembros de una campaña sin verificar, cuando es necesario
+            // que el actor que lo manda está legitimado.
+            // Lo dejamos así mientras terminamos los replys, y esto lo haremos después cuando hagamos todo lo de 
+            // federar los miembros de las campañas
             case 'Invite':
                 Member::create([
                     'actor'=>$activity['actor'],
@@ -726,7 +730,11 @@ class ActivityPub
                     'status'=>'Join'
                 ]);
                 return response()->json(['message' => 'OK'],200);
-
+            case 'Add':
+                // Aqui habría que tratar colecciones sincronizadas, pero eso todavía no lo tenemos implementado
+                // Pero si que se tratará aquí de sincronizar los members y attributedTo de las campañas
+                Log::info("Add ".$activity['target']." a la colección ".$activity['object']);
+                return response()->json(['message' => 'OK'],200);
             default:
                 Log::info('Unknown activity type root: ' . $activity['type']);
                 Log::info(print_r($activity,1));
@@ -765,7 +773,7 @@ class ActivityPub
             {
                 $sincronizado=false;
                 Log::info("Añado a colección de replys $v de $id que no lo teníamos");
-                Reply::create([
+                Reply::firstOrCreate([
                   'object'=>$id,  
                   'reply'=>$v
                 ]);

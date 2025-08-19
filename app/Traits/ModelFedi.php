@@ -18,6 +18,7 @@ use App\Models\Outbox;
 use App\Models\Apfile;
 use App\Models\Like;
 use App\Models\Announce;
+use App\Models\Reply;
 
 use App\ActivityPub\ActivityPub;
 
@@ -28,20 +29,23 @@ use League\CommonMark\CommonMarkConverter;
 trait ModelFedi
 {
     /**
-     * Boot the trait to listen for the model's creation event.
+     * Boot para escuchar distintos eventos de los modelos
      */
     public static function bootModelFedi()
     {
+
         static::created(function ($model) {
-            Log::info("tipo: ".$model->APtype." act ".$model->actor);
+            Log::info("boot CREATED: ".$model->APtype." act ".$model->actor);
 
             $validos=['Note','Article','Announce','Question','Page'];
             if (in_array($model->APtype,$validos))
             {
-                Log::info("slug - id ");
-                if (!$model->slug) $model->slug=$model->id;
-                #$model->distribute();
-
+                if (!$model->slug) 
+                {
+                    $model->slug=$model->id;
+                    $model->saveQuietly();
+                }
+                Log::info("slug ".$model->GetActivity()['id']);
                 $json = [
                     '@context' => 'https://www.w3.org/ns/activitystreams',
                     'id' => $model->GetActivity()['id'],
@@ -51,17 +55,17 @@ trait ModelFedi
                     'object' => $model->GetActivity()
                     ];
                 $user=$model->User();
-                // creo objeto Outbox
                 if (isset($model->actor))
                     $actor=$model->actor;
                 else
                     $actor=$model->GetActivity()['attributedTo'];
+                Log::info('creo outbox');
                 Outbox::create([
                     'actor' => $actor,
                     'object' => $model->GetActivity()['id']
                 ]);
+                Log::info("Mando a distribuir la actividad del contenido que se ha creado");
                 Queue::later(now()->addSeconds(5), new DistribuirFedi(false, $user, $json));
-                #Queue::push(new DistribuirFedi(false,$user,$json));
             }
             if ($model->APtype=='Collection')
             {
@@ -83,8 +87,6 @@ trait ModelFedi
                             $user=explode("/", $model->object);
                             $user=ActivityPub::GetIdentidadBySlug(array_pop($user));
                             Queue::push(new EnviarActividadToActor($user,$this->actor,$activity));
-
-
                         }
                     }
                     if ($model->status=='Invite')
@@ -113,7 +115,7 @@ trait ModelFedi
 
         static::deleting(function ($model) {
            
-            Log::info('Se está eliminando el modelo con ID: ' . $model->id);
+            Log::info('BOOT deleting Se está eliminando el modelo con ID: ' . $model->id);
             if ($model->APtype=='Announce')
             {
                 $activity=[
@@ -193,6 +195,7 @@ trait ModelFedi
 
         static::updating(function ($model) 
         {
+            Log::info('BOOT updating Se está actualizando el modelo con ID: ' . $model->id);
             $validos=['Note','Article','Announce','Question','Page'];
             if (in_array($model->APtype,$validos))
             {
@@ -273,7 +276,6 @@ trait ModelFedi
             $a=$this->actor;
         else
         {
-            $idmodelo=Str::plural(class_basename($this));
             $team=Team::find($this->team_id);
             if ($team)
                 $a=$team->GetActivity()['id'];
@@ -292,13 +294,11 @@ trait ModelFedi
 
     public function User()
     {
-            $idmodelo=Str::plural(class_basename($this));
-            $team=Team::find($this->team_id);
-            if ($team)
-                return $team;
-            $user=User::find($this->user_id);
-            return $user;
-        
+        $team=Team::find($this->team_id);
+        if ($team)
+            return $team;
+        $user=User::find($this->user_id);
+        return $user;
     }
 
     public function GetActivity()
@@ -306,7 +306,7 @@ trait ModelFedi
         if (isset($this->APtranslate))
             foreach ($this->APtranslate as $key => $value)
                 $this->$key = $this->$value;
-        $conuser=['Note','Article','Announce','Question','Page'];
+        $conuser=['Note','Article','Announce','Question','Page','Event'];
         if (in_array($this->APtype,$conuser))
         {
             if ($this->team_id)
@@ -402,7 +402,7 @@ trait ModelFedi
         $contexto=[
             'https://www.w3.org/ns/activitystreams',
             [
-                    'ostatus' => 'http://ostatus.org#',
+                    #'ostatus' => 'http://ostatus.org#',
                     #'atomUri' => 'ostatus:atomUri',
                     #'inReplyToAtomUri' => 'ostatus:inReplyToAtomUri',
                     #'conversation' => 'ostatus:conversation',
@@ -445,11 +445,6 @@ trait ModelFedi
             if ($this->summary) $activity['summary'] = $converter->convert($this->summary)->getContent();
             if ($this->content) $activity['content'] = $converter->convert($this->content)->getContent();
         }
-
-
-
-
-
         if ($this->APtype=='Event')
         {
             $idmodelo=Str::plural(Str::lower(class_basename($this)));
@@ -513,6 +508,7 @@ trait ModelFedi
         }
         if ($this->APtype=='Note')
         {
+            Log::debug($this);
             $idmodelo=Str::plural(Str::lower(class_basename($this)));
             $activity = [
                 '@context' => $contexto,
@@ -531,8 +527,7 @@ trait ModelFedi
                 'attachment' => $this->getActivityPubAttachments()
             ];
         }
-
-        $validos=['Note','Article','Question','Page'];
+        $validos=['Note','Article','Question','Page','Event'];
         if (in_array($this->APtype,$validos))
         {
             $idmodelo=Str::plural(Str::lower(class_basename($this)));
@@ -548,6 +543,9 @@ trait ModelFedi
                 'type' => 'Collection', 
                 'totalItems' => $numannounces
             ];
+            $activity['replies'] = Route($idmodelo.'.replies', ['slug' => $this->slug]);   
+            $replyto=Reply::where('reply',Route($idmodelo.'.show', ['slug' => $this->slug]))->first();
+            if ($replyto) $activity['inReplyTo'] = $replyto->object;
         }
         if ($this->APtype=='Block')
         {

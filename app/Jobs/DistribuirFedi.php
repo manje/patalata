@@ -13,6 +13,8 @@ use App\ActivityPub\ActivityPub;
 
 use Illuminate\Support\Facades\Log;
 
+use Illuminate\Support\Facades\Queue;
+
 /* Envía una actividad a todos los followeres */
 
 class DistribuirFedi implements ShouldQueue
@@ -43,9 +45,7 @@ class DistribuirFedi implements ShouldQueue
         Log::info('DistribuirFedi:  hadle');
         if (($this->activity['type']=='Create') || ($this->activity['type']=='Update'))
         {
-            Log::info("Esperamos 10s".print_r($this->activity,1));
             $this->activity['object']=$this->ap->GetObjectByUrl($this->activity['object']['id']);
-            Log::info("Fin 10s".print_r($this->activity,1));
         }
         Log::info('DistribuirFedi: inicio ');
         $followers=Apfollower::where('actor', $this->user->GetActivity()['id'])->get();
@@ -56,11 +56,26 @@ class DistribuirFedi implements ShouldQueue
             if (!$b) $b=Block::where('actor', $follower->object)->where('object', $this->user->GetActivity()['id'])->first();
             if ($b) continue;
             $list[]=$follower->object;
-
+            Log::info("fffffffffffffff ".$follower->object);
             $data=['modelo'=> $this->data, 'actor'=> $this->user->GetActivity()['id'], 'follower' => $follower->object , 'user' => $this->user];
-            EnviarFedi::dispatch($data,$this->activity);
+            #EnviarFedi::dispatch($data,$this->activity);
+            Queue::push(new EnviarActividadToActor($this->user,$follower->object,$this->activity));
         }
         Log::info(count($followers).' envidados.');    
+        
+        if (isset($this->activity['inReplyTo']))
+        {
+            try {
+                $obj=$this->ap->GetObjectByUrl($this->activity['inReplyTo']);
+                $b=Block::where('actor', $this->user->GetActivity()['id'])->where('object', $obj['attributedTo'])->first();
+                if (!$b) $b=Block::where('actor', $obj['attributedTo'])->where('object', $this->user->GetActivity()['id'])->first();
+                if ($b) return;
+                if (!in_array($obj['attributedTo'],$list))
+                    Queue::push(new EnviarActividadToActor($this->user,$obj['attributedTo'],$this->activity));
+            } catch (\Throwable $th) {
+                Log::error($th);
+            }
+        }
         if ($this->data)
         if ($this->data->APtype=='Announcement') 
         {

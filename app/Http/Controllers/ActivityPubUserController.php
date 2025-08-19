@@ -60,13 +60,11 @@ class ActivityPubUserController extends Controller
             $res=$sig->verify($activity,$actor['publicKey']['publicKeyPem']);
             if ($res)
             {
-                Log::info("Valida\tsignature LD t $activity[type] $actor[id] ");
                 return $ap->InBox($activity);
             }
             Log::info("Inválida\tsignature LD $activity[type] $actor[id] ");
             return response()->json(['error' => 'Invalid signature'], 401);
         }
-        Log::info("Válida signature $path ".$user->slug." ".$signatureData['algorithm']);
         return $ap->InBox($activity);
     }
 

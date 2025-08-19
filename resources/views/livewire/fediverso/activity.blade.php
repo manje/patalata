@@ -290,10 +290,10 @@ wire:init="load"
                     <i class="fa-solid fa-lock mr-2 text-gray-300"></i>
                     <span>Impulsos</span>
                     @endif
+                    <i class="fa-solid fa-reply mr-2" wire:click="responder('{{ $activity['id'] }}')"></i>
                     <button class="flex items-center space-x-1"  wire:click="verrespuestas()">
-                        <i class="fa-solid fa-reply mr-2"></i>
                             {{ $activity['num_replies']}}
-                        <span>Respuestas</span>
+                        <span class='ml-1'>Respuestas</span>
                     </button>
                 </div>
                 <div wire:target="verrespuestas" wire:loading.delay class="w-full text-center">

@@ -39,9 +39,25 @@
         
         >
         <!-- Caja de texto para el contenido -->
+
+        @if ($inreplyto)
+            <div class="bg-white p-4 mb-4 text-black rounded-lg shadow-md">
+                <div class="flex">
+                    <div class='w-full'>
+                        Respondiendo a:
+                    </div>
+                    <div class="cursor-pointer" wire:click="cleaninreplyto()">
+                    &times;
+                    </div>
+                </div>
+                <livewire:fediverso.activity :activity="$inreplyto" :diferido="true" :key="$inreplyto"  />
+            </div>
+        @endif
+
         <textarea x-model="text" wire:model="text" class="w-full border-gray-300 rounded-md p-2 mb-4" placeholder="Escribe algo..." maxlength="250"></textarea>
 
         <div class='flex w-full items-center space-x-2 mb-4'>
+
             <i class="text-xl cursor-pointer fa-solid fa-triangle-exclamation"
                 :class="sensitive ? 'text-red-500' : 'text-gray-500'"
                 @click="sensitive = !sensitive">

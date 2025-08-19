@@ -31,6 +31,7 @@ Route::prefix('notas')->group(function () {
     Route::get('/', [NotaController::class, 'index'])->name('notas.index');
     Route::get('/create', [NotaController::class, 'create'])->name('notas.create');
     Route::post('/', [NotaController::class, 'store'])->name('notas.store');
+    Route::get('/{slug}/replies', [NotaController::class, 'replies'])->name('notas.replies');
     Route::get('/{slug}', [NotaController::class, 'show'])->name('notas.show');
 });
 
@@ -44,6 +45,7 @@ Route::prefix('articles')->group(function () {
     Route::get('/create', [ArticleController::class, 'create'])->name('articles.create'); // Formulario para crear un nuevo post
     Route::get('/edit/{slug}', [ArticleController::class, 'edit'])->name('articles.edit');
     Route::post('/', [ArticleController::class, 'store'])->name('articles.store'); // Guardar un nuevo post
+    Route::get('/{slug}/replies', [ArticleController::class, 'replies'])->name('articles.replies'); // Mostrar un post individual
     Route::get('/{slug}', [ArticleController::class, 'show'])->name('articles.show'); // Mostrar un post individual
     Route::put('/{slug}', [ArticleController::class, 'update'])->name('articles.update');
 });
@@ -54,6 +56,7 @@ Route::prefix('/events')->group(function () {
     Route::get('/create', [EventController::class, 'create'])->name('events.create'); // Formulario para crear un nuevo post
     Route::get('/edit/{slug}', [EventController::class, 'edit'])->name('events.edit');
     Route::post('/', [EventController::class, 'store'])->name('events.store'); // Guardar un nuevo post
+    Route::get('/{slug}/replies', [EventController::class, 'replies'])->name('events.replies'); // Mostrar un post individual
     Route::get('/{slug}', [EventController::class, 'show'])->name('events.show'); // Mostrar un post individual
     Route::put('/{slug}', [EventController::class, 'update'])->name('events.update');
 });
@@ -102,7 +105,6 @@ Use App\Http\Controllers\FediversoController;
 Route::get('/fedi', [FediversoController::class, 'index'])->name('fediverso.index'); // Formulario para crear un nuevo post
 Route::get('/@{slug}', [FediversoController::class, 'profile'])->where('slug', '.*')->name('fediverso.profile');
 Route::get('/capaign/@{slug}', [CampaignController::class, 'show'])->where('slug', '.*')->name('campaign.show');
-
 Route::get('/.well-known/webfinger', [ActivityPubUserController::class, 'webFinger'])
     ->name('activitypub.webfinger');
 

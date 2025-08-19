@@ -16,6 +16,8 @@ class Seguir extends Component
 
     public function mount($actor)    
     {
+        $this->identidad=ActivityPub::GetIdentidad();
+        $this->ap=new ActivityPub($this->identidad);
         if (is_string($actor)) 
             $this->actor=$this->ap->GetActorByUrl($actor);
         else

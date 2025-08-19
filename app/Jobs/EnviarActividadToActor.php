@@ -17,6 +17,9 @@ class EnviarActividadToActor implements ShouldQueue
     public $user;
     public $actor;
     public $activity;
+    
+    public $tries=15;
+    public $backoff = [30,60,180,300,3600,3600*4,3600*12,3600*12*24];
 
     /**
      * Create a new job instance.
@@ -33,12 +36,20 @@ class EnviarActividadToActor implements ShouldQueue
      */
     public function handle(): void
     {   
-        Log::info("EnviarActividadToActor ".$this->actor);
         $ap=new ActivityPub($this->user);
         $actor=$ap->GetActorByUrl($this->actor);
+        if (isset($actor['error']))
+        {
+            if ($actor['error']=='Gone') return;
+            Log::info($actor);
+            Log::info("Error al enviar actividad a este actor: ".print_r($actor,1));
+            throw new \Exception('Error al enviar actividad a '.$this->actor);
+        }
         if ($actor===false) throw new \Exception('Error al localizar actor '.$this->actor);
         $json=json_encode($this->activity);
-        $response=$ap->EnviarActividadPOST($this->user,$json,$actor['inbox']);
+        
+        
+        $response=$ap->EnviarActividadPOST($json,$actor['inbox']);
         $responsetxt="$response";
         if (strlen($responsetxt)!=3)  throw new \Exception("Error $response al enviar actividad a ".$actor['inbox']);
         if (!in_array($response,[200,201,202]))
