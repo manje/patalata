@@ -120,7 +120,7 @@ class ActivityPub
         if ($num++>100) Log::info("muchas peticiones a $domain ($num) ".date("YmdHis"));
         if ($num++>100) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
-        Log::info("NoCache $url ($cache)");
+        #Log::info("NoCache $url ($cache)");
         $out=$this->GetUrlFirmado($url);
         if ($cache===false) $cache=60*24*15;
 
@@ -178,7 +178,7 @@ class ActivityPub
         if (isset($out['error']))
             $cache=30;
         if ($cache===false) $cache=60*24*15;
-        Log::info("guardo cache ($cache) $url");
+        #Log::info("guardo cache ($cache) $url");
         Cache::put($url,$out,$cache*60);
         return $out;
     }
@@ -376,6 +376,9 @@ class ActivityPub
         else
             $list=$cachetmp;
         $col=$this->GetObjectByUrl($idlist,5);
+        // Hemos encontrado un error donde $col no tenía type
+        if (!(is_array($col))) Log::info('5875487'.print_r($col,1));
+        if (!(isset($col['type']))) Log::info('5874ruirj'.print_r($col,1));
         // esto tiene tipo collection y un first
         if ($col['type']!='Collection')
         {
@@ -424,7 +427,7 @@ class ActivityPub
 
     public function GetColeccion($idlist,$solocount=false,$limite=false)
     {
-        Log::info(print_r($idlist,1));
+        #Log::info(print_r($idlist,1));
         if (is_string($idlist))
             $col=$this->GetObjectByUrl($idlist,3);
         else
@@ -443,7 +446,6 @@ class ActivityPub
         if (isset($col['error'])) return $col;
         if  ((isset($col['type'])) &&  ( ($col['type']=='Collection') ||   ($col['type']=='OrderedCollection') )  ) 
         {
-            Log::info(print_r($col,1));
             $items=[];
             if (isset($col['orderedItems']))
             {
@@ -506,7 +508,7 @@ class ActivityPub
         else
         {
 
-            Log::info($idlist);
+            Log::info("log 237329873 $idlist");
             Log::info(print_R($col,1));
             Log::error('3459749543');
             return false;
@@ -524,7 +526,17 @@ class ActivityPub
                 Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
-            Log::info("InBox ".$this->user->slug.": type: $activity[type] | actor: $activity[actor]");
+            if (isset($activity['object']))
+            {
+                if (is_array($activity['object']))
+                    $o=$activity['object']['id'];
+                else
+                    $o=$activity['object'];
+            }
+            else
+              $o="";
+            
+            Log::info("InBox ".$this->user->slug.": type: $activity[type] | actor: $activity[actor], $o");
             switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
@@ -701,7 +713,11 @@ class ActivityPub
                 Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*30);
                 Timeline::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
                 Reply::where('object',$activity['object'])->orWhere('reply',$activity['object'])->delete();
-                // hay que borrar nuestros likes, members y announces a este objeto                
+                // hay que borrar nuestros likes, members y announces a este objeto
+                
+                // Si el objeto es un actor, (mismo id de object que actor que envía la actividad)
+                // hay que eliminar también follors, members, y likes y announces recibidos                
+
                 return response()->json(['message' => 'Accepted'],202);
                 #Log::info('Petición de Delete '.print_r($activity,1));
             }
@@ -731,9 +747,10 @@ class ActivityPub
                 ]);
                 return response()->json(['message' => 'OK'],200);
             case 'Add':
+            case 'Remove':
                 // Aqui habría que tratar colecciones sincronizadas, pero eso todavía no lo tenemos implementado
                 // Pero si que se tratará aquí de sincronizar los members y attributedTo de las campañas
-                Log::info("Add ".$activity['target']." a la colección ".$activity['object']);
+                Log::info($activity['type']." ".$activity['target']." a la colección ".$activity['object']);
                 return response()->json(['message' => 'OK'],200);
             default:
                 Log::info('Unknown activity type root: ' . $activity['type']);
@@ -743,7 +760,7 @@ class ActivityPub
                 return response()->json(['message' => 'Unknow activity '.$activity['type']],501);                
         }
         Log::info('fin Inbox');
-        Log::info('Aquí no deberíamos llegar nunca, debemos devolver siempre una respuesta http');
+        Log::error('Aquí no deberíamos llegar nunca, debemos devolver siempre una respuesta http');
         return true;
     }
     

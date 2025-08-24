@@ -25,11 +25,12 @@ class Activity extends Component
     public $msgrespondiendo=true;
     public $like=false;
     public $rt=false;
+    public $interactivo=true;
     protected $ap;
     protected $user;
 
 
-    public function mount($activity,$diferido=true,$msgrespondiendo=true)
+    public function mount($activity,$diferido=true,$msgrespondiendo=true,$interactivo=true)
     {
         $this->ap();
         if ($msgrespondiendo==false) $this->msgrespondiendo=false;
@@ -38,6 +39,7 @@ class Activity extends Component
         else
             $this->activity = $activity;
         $this->diferido=$diferido;
+        $this->interactivo=$interactivo;
         if (!$diferido) $this->cargar();
     }
     

@@ -38,7 +38,10 @@ wire:init="load"
                     @if ($msgrespondiendo)                   
                         <div class="">
                             <div class="text-gray-500 font-bold">
-                            <a class="cursor-pointer" wire:click="verorigen()"
+                            <a class="cursor-pointer" 
+                                @if ($interactivo)
+                                    wire:click="verorigen()"
+                                @endif
                             >Respondiendo a {{ $activity['autororigen'] }}</a>
                             </div>
                         </div>
@@ -252,6 +255,7 @@ wire:init="load"
                     @endif
                 </div>
             </div>
+            @if ($interactivo)
             <div>
                 <div class="mt-2 pb-2 flex space-x-4 text-gray-500 border-b ">
                     <button class="flex items-center space-x-1" wire:click="setlike()">
@@ -308,6 +312,7 @@ wire:init="load"
                 </div>
                 @endif
             </div>
+            @endif
         @endif
     @endif
 @endif

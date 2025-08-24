@@ -50,7 +50,7 @@
                     &times;
                     </div>
                 </div>
-                <livewire:fediverso.activity :activity="$inreplyto" :diferido="true" :key="$inreplyto"  />
+                <livewire:fediverso.activity :activity="$inreplyto" :diferido="true" :key="$inreplyto" :interactivo="false" />
             </div>
         @endif
 
