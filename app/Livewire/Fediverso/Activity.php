@@ -41,9 +41,6 @@ class Activity extends Component
         $this->diferido=$diferido;
         $this->interactivo=$interactivo;
         if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
-        if (!(isset($this->activity['tag']))) $this->activity['tag']=[];
-        if (!(array_is_list($this->activity['tag']))) $this->activity['tag']=[$this->activity['tag']];
-
         if (!$diferido) $this->cargar();
     }
     
@@ -167,11 +164,8 @@ class Activity extends Component
                 $this->activity['error']='Actividad no soportada '.$this->activity['type'];#.'<pre>'.print_r($this->activity,1).'</pre>';
             }
         }
-        if ($this->activity['id']=='https://bsky.brid.gy/convert/ap/at://did:plc:3dp67jb5li3aiut32fvxxija/app.bsky.feed.post/3lxaej6xsoc2r')
-        {
-            Log::info(print_r($this->activity,1));
-        }
-
+        if (!(isset($this->activity['tag']))) $this->activity['tag']=[];
+        if (!(array_is_list($this->activity['tag']))) $this->activity['tag']=[$this->activity['tag']];
     }
 
 
