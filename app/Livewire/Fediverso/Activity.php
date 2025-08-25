@@ -40,6 +40,7 @@ class Activity extends Component
             $this->activity = $activity;
         $this->diferido=$diferido;
         $this->interactivo=$interactivo;
+        if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
         if (!$diferido) $this->cargar();
     }
     
@@ -58,7 +59,6 @@ class Activity extends Component
         $this->ap();
         $this->loading=false;
         if (isset($this->activity['error'])) $this->activity['type']="Error";
-        if (isset($this->activity['actor']))
         if ($this->activity['type']=="Create")
         {
             if (is_string($this->activity['object']))    
@@ -104,12 +104,6 @@ class Activity extends Component
         }
         if (isset($this->activity['likes']))  $this->activity['num_likes']=(int)$this->ap->GetCountCollection($this->activity['likes']);
         if (isset($this->activity['shares']))  $this->activity['num_shares']=(int)$this->ap->GetCountCollection($this->activity['shares']);
-
-        // probando nuevas funciones para replies
-
-        #$tmp=$this->ap->GetReplys($this->activity['id']);
-
-
         if (isset($this->activity['inReplyTo']))
         {
             if (is_string($this->activity['inReplyTo']))
@@ -139,12 +133,10 @@ class Activity extends Component
             $this->like=(Like::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->count()>0);
             $this->rt=(Announce::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->count()>0);
         }
-        
         if (isset($this->activity['content']))
             $this->activity['content']=ActivityPub::limpiarHtml($this->activity['content']);
         if (isset($this->activity['summary']))
             $this->activity['summary']=ActivityPub::limpiarHtml($this->activity['summary']);
-        if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
         $this->activity['visible']='private';
         $to=[];
         if (isset($this->activity['to'])) $to=(array)$this->activity['to'];
@@ -172,6 +164,11 @@ class Activity extends Component
                 $this->activity['error']='Actividad no soportada '.$this->activity['type'];#.'<pre>'.print_r($this->activity,1).'</pre>';
             }
         }
+        if ($this->activity['id']=='https://bsky.brid.gy/convert/ap/at://did:plc:3dp67jb5li3aiut32fvxxija/app.bsky.feed.post/3lxaej6xsoc2r')
+        {
+            Log::info(print_r($this->activity,1));
+        }
+
     }
 
 
@@ -270,7 +267,7 @@ class Activity extends Component
 
     public function render()
     {
-        if (!(isset($this->activity['type'])))
+        if (!(isset($this->activity['sensitive'])))
             Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
         if ($this->activity['type']=='Accept') return "<div></div>";

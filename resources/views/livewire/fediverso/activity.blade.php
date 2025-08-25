@@ -235,13 +235,6 @@ wire:init="load"
                             </div>
                         @endif
                     </div>
-
-
-
-
-
-
-
                     @if (isset($activity['tag']))
                         @if (count($activity['tag'])>0)
                         <div class="mt-2">
