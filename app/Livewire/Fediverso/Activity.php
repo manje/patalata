@@ -41,6 +41,9 @@ class Activity extends Component
         $this->diferido=$diferido;
         $this->interactivo=$interactivo;
         if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
+        if (!(isset($this->activity['tag']))) $this->activity['tag']=[];
+        if (!(array_is_list($this->activity['tag']))) $this->activity['tag']=[$this->activity['tag']];
+
         if (!$diferido) $this->cargar();
     }
     
