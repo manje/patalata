@@ -161,7 +161,8 @@ class Activity extends Component
             $soportado=['Note','Page','Article','Event','Question','Audio','Video','Image','Announce'];
             if (!(in_array($this->activity['type'], $soportado)))
             {
-                $this->activity['error']='Actividad no soportada '.$this->activity['type'];#.'<pre>'.print_r($this->activity,1).'</pre>';
+                if ($this->activity['type']!="Error")
+                    $this->activity['error']='Actividad no soportada '.$this->activity['type'];
             }
         }
         if (!(isset($this->activity['tag']))) $this->activity['tag']=[];
