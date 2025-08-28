@@ -167,6 +167,7 @@ class Activity extends Component
         }
         if (!(isset($this->activity['tag']))) $this->activity['tag']=[];
         if (!(array_is_list($this->activity['tag']))) $this->activity['tag']=[$this->activity['tag']];
+        if (!(isset($this->activity['sensitive']))) $this->activity['sensitive']=false;
     }
 
 
@@ -268,6 +269,9 @@ class Activity extends Component
         if (!(isset($this->activity['sensitive'])))
             Log::info(print_r($this->activity,1));
         if (!(isset($this->activity['type']))) return "<div>no type</div>";
+        if ($this->activity['type']=='Like') return "<div></div>";
+        if ($this->activity['type']=='DisLike') return "<div></div>";
+        if ($this->activity['type']=='Undo') return "<div></div>";
         if ($this->activity['type']=='Accept') return "<div></div>";
         if ($this->activity['type']=='Note')
         if (isset($this->activity['attachments']))

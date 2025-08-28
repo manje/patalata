@@ -84,8 +84,16 @@ class ActivityPub
             $out['userfediverso']=$out['preferredUsername']."@$d";
         else
         {
+            if (isset($out['type']))
+            {
+                if ($out['type']=="Tombstone")
+                {
+                  $out['error']="Actor borrado";
+                  return $out;
+                }
+            }
             Log::error('234698'.print_r($out,1));
-            $out['error']='Actor inválido';
+            $out['error']='Actor Inválido';
             return $out;
         }
         Cache::put($key,$out,3600*24);
@@ -102,7 +110,6 @@ class ActivityPub
         if (false)
         if (parse_url($url, PHP_URL_HOST) == parse_url(env('APP_URL'), PHP_URL_HOST))
         {
-            // esto provoca errroes 429
             $request = Request::get($url, 'GET');
             $response = app()->handle($request);
             $status = $response->getStatusCode();
@@ -635,7 +642,7 @@ class ActivityPub
                 // Compruebo si el actor está entre los seguidos del usuario
                 
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
-                if (is_null($seguido))
+                if (isset($activity['object']['inReplyTo']))
                 {
                    $object=$activity['object']['inReplyTo'];
                    $reply=$activity['object'];
@@ -660,14 +667,19 @@ class ActivityPub
                     $line->actor_id=$activity['actor'];
                     $line->activity=$activity["object"]['id'];
                     $line->save();
+                    return response()->json(['message' => 'Accept'],202);
                 }
-                return response()->json(['message' => 'Accept'],202);
             }
             case 'Announce':
             {
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if ($seguido)
                 {
+                    // Evitamos los Like Dislike y otras actividades de lemmy porque no se deben ver en el timeline
+                    $soportado=['Note','Page','Article','Event','Question'];
+                    if (isset($activity['object']['type']))
+                        if (!in_array($activity["object"]["type"],$soportado))
+                            return response()->json(['message' => 'Accept'],202);
                     $line= new Timeline();
                     $line->user=$this->user->GetActivity()['id'];
                     $line->activity=$activity['id'];
@@ -683,7 +695,6 @@ class ActivityPub
                 {
                     Announce::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
                 }
-                #Log::info("Announce: ".print_r($activity,1));
                 return response()->json(['message' => 'Accept'],202);
             }
             case 'Like':
@@ -750,6 +761,7 @@ class ActivityPub
             case 'Remove':
                 // Aqui habría que tratar colecciones sincronizadas, pero eso todavía no lo tenemos implementado
                 // Pero si que se tratará aquí de sincronizar los members y attributedTo de las campañas
+                Log::info(print_r($activity,1));
                 Log::info($activity['type']." ".$activity['target']." a la colección ".$activity['object']);
                 return response()->json(['message' => 'OK'],200);
             default:

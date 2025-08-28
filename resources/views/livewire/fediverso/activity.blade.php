@@ -24,7 +24,9 @@ wire:init="load"
                     Impulsado por <a href='/{{'@'}}{{ $activity['actor']['userfediverso'] }}'   >{{ $activity['actor']['userfediverso'] }}</a>
                 </span>
                 <div class="ml-14 flex-1 text-right">
-                    {{ $activity['published']->diffForHumans() }}
+                    @if (isset($activity['published']))
+                    {{ $activity['published']->diffForHumans()  }}
+                    @endif
                 </div> 
             </div>
             <div>
@@ -68,7 +70,7 @@ wire:init="load"
                             <h2 class="font-bold text-lg">
                                 @if (isset($activity['attributedTo']['preferredUsername']))
                                 <a href="/{{"@"}}{{ $activity['attributedTo']['preferredUsername'] }}{{"@"}}{{ explode("/",$activity['attributedTo']['inbox'])[2] }}" class="text-lg">
-                                    {{ $activity['attributedTo']['name'] ?? '???' }}
+                                    {{ $activity['attributedTo']['name'] ?? $activity['attributedTo']['preferredUsername'] }}
                                 </a>
                                 @endif
                             </h2>
