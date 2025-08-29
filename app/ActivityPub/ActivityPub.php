@@ -127,10 +127,8 @@ class ActivityPub
         if ($num++>100) Log::info("muchas peticiones a $domain ($num) ".date("YmdHis"));
         if ($num++>100) return ['error'=>"muchas peticiones a $domain ($num) ".date("YmdHis"),'codhttp'=>8080]; //    150 parecen muchas, con 100 va piano
         Cache::put($idca,$num,3600);
-        #Log::info("NoCache $url ($cache)");
         $out=$this->GetUrlFirmado($url);
         if ($cache===false) $cache=60*24*15;
-
         if (!(is_array($out)))
         {
             $out=['error'=>"No es array: $url - $out"];
@@ -142,7 +140,7 @@ class ActivityPub
             $num=(int)("$out[codhttp]"[0]);
             if ($num > 2)
             {
-                $cache=3600;  // para peticiones con errores http las dejamos en cache solo una hora
+                if ($cache > (60*60)) $cache=3600;  // para peticiones con errores http las dejamos en cache solo una hora como mucho
                 switch($out['codhttp'])
                 {
                     case(429):
@@ -150,19 +148,18 @@ class ActivityPub
                         $cache=60;
                         break;
                     case(410): // Gone
-                        #$out=['error'=>'Gone','codhttp'=>$out['codhttp']];
-                        $cache=60*24*30;
+                        $cache=60*24*365;
+                        break;
+                    case(401): // Request not signed
+                    case(403): //Forbidden
+                        Log:info("Error 401 (Request not signed) $url");
+                        $cache=0; // tenemos un problema con peticiones no firmadas que se guaran fallidas en cache
                         break;
                     case(404): 
-                        #$out=['error'=>'Not Found','codhttp'=>$out['codhttp']];
-                        $cache=60*24;
-                        break;
-                    case(403): 
-                        #$out=['error'=>'Forbidden','codhttp'=>$out['codhttp']];
-                        $cache=60*24;
+                        $cache=60*24*365;
                         break;
                     default:
-                        Log:info("check codigos ".print_r($out,1)); // Hay que procesar todos los códigos de error http
+                        Log::info("check codigos ".print_r($out,1)); // Hay que procesar todos los códigos de error http
                 }
             }            
         }
@@ -174,7 +171,9 @@ class ActivityPub
                 Log::info($out);
                 // Estos son errores de conexión, pueden ser tanto error puntual de conexión
                 // habría que controlar los reintentos en base al host y no a la url
-                $cache=10;
+                // (aunque también pueden ser errores 5xx que sea solo con una url y no con
+                // el host
+                $cache=0;
             }
         }
         if (isset($out['type']))
@@ -186,7 +185,7 @@ class ActivityPub
             $cache=30;
         if ($cache===false) $cache=60*24*15;
         #Log::info("guardo cache ($cache) $url");
-        Cache::put($url,$out,$cache*60);
+        if ($cache > 0) Cache::put($url,$out,$cache*60);
         return $out;
     }
 
@@ -320,13 +319,13 @@ class ActivityPub
         if (!(isset($actor['outbox'])))
             return false;
         $outbox=$actor['outbox'];
-        $outbox=$this->GetUrlFirmado($this->user,$outbox);
+        $outbox=$this->GetUrlFirmado($outbox);
         if (isset($outbox['orderedItems']))
             return $outbox['orderedItems'];
         $list=[];
         if (isset($outbox['first']))
         {
-            $outbox=$this->GetUrlFirmado($this->user,$outbox['first']);
+            $outbox=$this->GetUrlFirmado($outbox['first']);
             if (!(isset($outbox['orderedItems']))) Log::info('489974857349'.print_r($outbox,1));
             $list=$outbox['orderedItems'];
             while (isset($outbox['next']))
@@ -527,12 +526,15 @@ class ActivityPub
     {
         // Aquí llega la petición con la firma verificada
         #Log::info(print_r($activity,1));
-        if (isset($activity["object"]["attributedTo"]))
+        #if (isset($activity["object"]["attributedTo"]))
+            /*
             if ( $activity["object"]["attributedTo"] != $activity['actor'] )
             {
-                Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
+                Log::error("111 distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'].print_r($activity,1) );
+                
                 return response()->json(['error'=>'actor not equal attributedTo'],400);
             }
+    
             if (isset($activity['object']))
             {
                 if (is_array($activity['object']))
@@ -544,7 +546,8 @@ class ActivityPub
               $o="";
             
             Log::info("InBox ".$this->user->slug.": type: $activity[type] | actor: $activity[actor], $o");
-            switch($activity['type']) {
+            */
+        switch($activity['type']) {
             case 'Follow':
                 $url=$activity['actor'];
                 $actor = $this->GetActorByUrl($url);
@@ -636,12 +639,8 @@ class ActivityPub
                 }
 
                 // La guardamos, falta procesarla para discover
-                // Ver si está ya en cache nos puede servir para saber si ya está procesada, ya que una misma actividad puede llegar varias veces a distintos actores subscritos
-                Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);
-                                    
-                // Compruebo si el actor está entre los seguidos del usuario
+                Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);                                    
                 
-                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if (isset($activity['object']['inReplyTo']))
                 {
                    $object=$activity['object']['inReplyTo'];
@@ -654,14 +653,10 @@ class ActivityPub
                    ]);
                 }
                 
+                // Compruebo si el actor está entre los seguidos del usuario
+                $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if ($seguido)
                 {
-                    // un create de un actor a el que seguimos lo incluimos en el timeline siempre, si después la actividad es erronea o lo que sea lo vermos después
-                    if ( $activity["object"]["attributedTo"] != $activity['actor'] )
-                    {
-                        Log::error(" distinto actor y attributedTo ".$activity["object"]["attributedTo"] . ' ' . $activity['actor'] );
-                        return response()->json(['message' => 'Bad Request'],400);
-                    }
                     $line= new Timeline();
                     $line->user=$this->user->GetActivity()['id'];
                     $line->actor_id=$activity['actor'];
@@ -672,6 +667,14 @@ class ActivityPub
             }
             case 'Announce':
             {
+                if (is_array($activity['object']))
+                    $id=$activity['object']['id'];
+                else
+                    $id=$activity['object'];    
+                if ($this->IsLocal($id))
+                {
+                    Announce::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
+                }
                 $seguido=Apfollowing::where('object', $activity['actor'])->where('actor', $this->user->GetActivity()['id'])->first();
                 if ($seguido)
                 {
@@ -686,14 +689,6 @@ class ActivityPub
                     $line->actor_id=$activity['actor'];
                     Cache::put($activity['id'],$activity,3600*30);
                     $line->save();
-                }
-                if (is_array($activity['object']))
-                    $id=$activity['object']['id'];
-                else
-                    $id=$activity['object'];    
-                if ($this->IsLocal($id))
-                {
-                    Announce::firstOrCreate(['actor'=>$activity['actor'],'object'=>$activity['object']]);
                 }
                 return response()->json(['message' => 'Accept'],202);
             }
@@ -712,16 +707,15 @@ class ActivityPub
             case 'Delete':
             {
                 // se puede borra un objeto o un actor, y el actor implica más operaciones que simplemente marcarlo como Tombstone
-                Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*30);
+                Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*365);
                 if ($activity['actor']==$activity['object'])
                 {
-                    TimeLine::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
+                    TimeLine::where('actor_id',$activity['actor'])->delete();
                     // hay que eliminar followers y followings, blocks, members, Announces, likes, 
                     return response()->json(['message' => 'Accepted'],202);
                 }
                 // Para borrar no necesito el contenido del objeto, solo el id
                 if (is_array($activity['object'])) $activity['object']=$activity['object']['id'];
-                Cache::put($activity['object'],['type'=>'Tombstone'],3600*24*30);
                 Timeline::where('activity', $activity['object'])->where('actor_id',$activity['actor'])->delete();
                 Reply::where('object',$activity['object'])->orWhere('reply',$activity['object'])->delete();
                 // hay que borrar nuestros likes, members y announces a este objeto
@@ -850,8 +844,6 @@ class ActivityPub
             $date = new DateTime('UTC');
             $headers = [
                 'Accept: application/activity+json, application/ld+json, application/json',
-#               'Accept' => 'application/activity+json, application/ld+json, application/json' ,
-#                'Content-Type' => 'application/json',
             ];
             curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
             $response = curl_exec($ch);
