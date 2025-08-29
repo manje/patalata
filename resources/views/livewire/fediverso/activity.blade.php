@@ -51,7 +51,7 @@ wire:init="load"
                 @endif
             @endif
 
-            <div class="w-full flex items-start space-x-4 @if ($origen) ml-20 @endif">
+            <div class="flex items-start space-x-4 @if ($origen) ml-20 @endif">
                 <div class="avatar">
                     <div class="w-12 rounded-full">
                         @if (isset($activity['attributedTo']['icon']['url']))
