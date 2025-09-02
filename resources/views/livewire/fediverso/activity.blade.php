@@ -122,11 +122,14 @@ wire:init="load"
                         @endif
                         @if ($activity['type']!='Note')
                             <p class="mt-1 text-gray-700">
-                                {!! $activity['summary'] ?? 'Sin descripción disponible.' !!}
+                                {!! $activity['summary'] ?? '' !!}
                             </p>
                         @else
                             <p class="mt-1 text-gray-700">
-                                {!! $activity['content'] ?? 'Sin contenido disponible.' !!}
+                                {!! $activity['summary'] ?? '' !!}
+                            </p>
+                            <p class="mt-1 text-gray-700">
+                                {!! $activity['content'] ?? '' !!}
                             </p>
                         @endif
                         {{-- Event --}}

@@ -71,7 +71,7 @@ class ActivityPub
     {
         if(!\p3k\url\is_url($url)) return false;
         // Si el actor se borra 
-        $key="-actor-".$url;
+        $key="actor_".$url;
         if ($out=Cache::get($key)) 
           return $out;
         $out=$this->GetObjectByUrl($url,60);
@@ -81,7 +81,10 @@ class ActivityPub
         if (isset($out['followers'])) $out['countfollowers']=$this->GetColeccion($out['followers'],true);
         $d=explode("/",$url)[2];
         if (isset($out['preferredUsername']))
+        {
             $out['userfediverso']=$out['preferredUsername']."@$d";
+            if (!isset($out['name'])) $out['name']=$out['preferredUsername'];
+        }
         else
         {
             if (isset($out['type']))
@@ -152,11 +155,13 @@ class ActivityPub
                         break;
                     case(401): // Request not signed
                     case(403): //Forbidden
-                        Log:info("Error 401 (Request not signed) $url");
-                        $cache=0; // tenemos un problema con peticiones no firmadas que se guaran fallidas en cache
+                        $cache=0; // Las peticiones fallidas no se pueden guardar en cache pues es posible que sea que el usuario que firma no tiene autorizacion
                         break;
                     case(404): 
                         $cache=60*24*365;
+                        break;
+                    case(8010):  // este código es inventado por mi, es cuando no recibimos un json (normalmente  es una respueata html)
+                        $cache=60;
                         break;
                     default:
                         Log::info("check codigos ".print_r($out,1)); // Hay que procesar todos los códigos de error http
@@ -757,6 +762,9 @@ class ActivityPub
                 // Pero si que se tratará aquí de sincronizar los members y attributedTo de las campañas
                 Log::info(print_r($activity,1));
                 Log::info($activity['type']." ".$activity['target']." a la colección ".$activity['object']);
+                return response()->json(['message' => 'OK'],200);
+            case 'Dislike':
+                Log::info("inbox dislike (pendiente de implementear)");
                 return response()->json(['message' => 'OK'],200);
             default:
                 Log::info('Unknown activity type root: ' . $activity['type']);
