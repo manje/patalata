@@ -643,7 +643,6 @@ class ActivityPub
                     return response()->json(['error' => 'actor y attributedTo distintos'],401);
                 }
 
-                // La guardamos, falta procesarla para discover
                 Cache::put($activity["object"]['id'],$activity["object"],3600*24*30);                                    
                 
                 if (isset($activity['object']['inReplyTo']))
@@ -918,6 +917,7 @@ class ActivityPub
 
     public function like($id)
     {
+        // esta función está obsoleta
         $actor=$this->user->GetActivity()['id'];
         $obj=$this->GetObjectByUrl($id);
         if (isset($obj['error']))

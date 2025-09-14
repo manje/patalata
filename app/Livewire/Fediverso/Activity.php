@@ -202,6 +202,7 @@ class Activity extends Component
         {
             // undo
             $like=Like::where('object', $this->activity['id'])->where('actor', $this->user->GetActivity()['id'])->first();
+            /*
             $activity=[
                 '@context'=>'https://www.w3.org/ns/activitystreams',
                 'id'=>$this->user->GetActivity()['id'].'#likes/'.$like->id,
@@ -223,12 +224,15 @@ class Activity extends Component
             }
             else
                 $like->delete();
+            */
+            $like->delete();
             $this->like=false;
         }
         else
         {
             $this->like=true;
             $like=Like::firstOrCreate(['object'=>$this->activity['id'], 'actor'=>$this->user->GetActivity()['id']]);
+            /*
             $activity=[
                 '@context'=>'https://www.w3.org/ns/activitystreams',
                 'id'=>$this->user->GetActivity()['id'].'#likes/'.$like->id,
@@ -244,6 +248,7 @@ class Activity extends Component
                 $like->delete();
 
             }
+            */
         }
     }
 

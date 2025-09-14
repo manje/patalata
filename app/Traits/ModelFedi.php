@@ -2,6 +2,10 @@
 
 namespace App\Traits;
 
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Queue\Queueable;
+
+
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Request;
@@ -36,7 +40,6 @@ trait ModelFedi
 
         static::created(function ($model) {
             Log::info("boot CREATED: ".$model->APtype." act ".$model->actor);
-
             $validos=['Note','Article','Announce','Question','Page'];
             if (in_array($model->APtype,$validos))
             {
@@ -66,6 +69,27 @@ trait ModelFedi
                 ]);
                 Log::info("Mando a distribuir la actividad del contenido que se ha creado");
                 Queue::later(now()->addSeconds(5), new DistribuirFedi(false, $user, $json));
+            }
+            if ($model->APtype=='Like')
+            {
+                if  ( parse_url(config('app.url'), PHP_URL_HOST) == parse_url($model->actor, PHP_URL_HOST))
+                {
+                    if  ( parse_url(config('app.url'), PHP_URL_HOST) != parse_url($model->object, PHP_URL_HOST))
+                    {
+                        $activity=[
+		                '@context'=>'https://www.w3.org/ns/activitystreams',
+		                'id'=>$model->actor.'#likes/'.$model->id,
+		                'type'=>'Like',
+		                'actor'=>$model->actor,
+		                'object'=>$model->object
+                        ];                        
+                        $user=explode("/", $model->actor);
+                        $user=ActivityPub::GetIdentidadBySlug(array_pop($user));
+                        $ap=new ActivityPub($user);
+                        $obj=$ap->GetObjectByUrl($model->object);
+                        Queue::push(new EnviarActividadToActor($user,$obj['attributedTo'],$activity));
+                    }
+                }
             }
             if ($model->APtype=='Collection')
             {
@@ -110,6 +134,7 @@ trait ModelFedi
                 }
 
             }
+            
 
         });
 
@@ -141,6 +166,32 @@ trait ModelFedi
                     'object' => $model->GetActivity() // comprobar si los deletes se hacen así o mandando solo el id
                 ];
                 $model->distribute($activity);
+            }
+            if ($model->APtype=='Like')
+            {
+                if  ( parse_url(config('app.url'), PHP_URL_HOST) == parse_url($model->actor, PHP_URL_HOST))
+                {
+                    if  ( parse_url(config('app.url'), PHP_URL_HOST) != parse_url($model->object, PHP_URL_HOST))
+                    {
+                        $activity=[
+		                '@context'=>'https://www.w3.org/ns/activitystreams',
+		                'id'=>$model->actor.'#likes/'.$model->id,
+		                'type'=>'Undo',
+		                'actor'=>$model->actor,
+		                'object'=>[
+		                    'id'=>$model->actor.'#likes/'.$model->id,
+		                    'type'=>'Like',
+		                    'actor'=>$model->actor,
+		                    'object'=>$model->object
+		                ]
+                        ];
+                        $user=explode("/", $model->actor);
+                        $user=ActivityPub::GetIdentidadBySlug(array_pop($user));
+                        $ap=new ActivityPub($user);
+                        $obj=$ap->GetObjectByUrl($model->object);
+                        Queue::push(new EnviarActividadToActor($user,$obj['attributedTo'],$activity));
+                    }
+                }
             }
 
             if ($model->APtype=='Collection')
